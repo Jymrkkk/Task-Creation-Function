@@ -1,0 +1,370 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Test Update Mode Validation</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    
+    <!-- SweetAlert2 for modal notifications -->
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 50px auto;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        .test-section {
+            background: white;
+            padding: 20px;
+            margin-bottom: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        h1 {
+            color: #6a0dad;
+        }
+        h2 {
+            color: #333;
+            border-bottom: 2px solid #6a0dad;
+            padding-bottom: 10px;
+        }
+        .test-case {
+            margin: 15px 0;
+            padding: 15px;
+            background: #f9f9f9;
+            border-left: 4px solid #6a0dad;
+        }
+        .test-case h3 {
+            margin-top: 0;
+            color: #6a0dad;
+        }
+        button {
+            background: #6a0dad;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 5px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        button:hover {
+            background: #5a009d;
+        }
+        .result {
+            margin-top: 10px;
+            padding: 10px;
+            border-radius: 4px;
+        }
+        .pass {
+            background: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+        .fail {
+            background: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+        .info {
+            background: #d1ecf1;
+            color: #0c5460;
+            border: 1px solid #bee5eb;
+        }
+        code {
+            background: #f4f4f4;
+            padding: 2px 6px;
+            border-radius: 3px;
+            font-family: monospace;
+        }
+    </style>
+</head>
+<body>
+    <h1>Update Mode Validation Test</h1>
+    <p>This test verifies that form validation works correctly in update mode (Requirement 4.4)</p>
+
+    <div class="test-section">
+        <h2>Test Setup</h2>
+        <p>This test will:</p>
+        <ol>
+            <li>Create a mock task in LocalStorage</li>
+            <li>Enter update mode with that task</li>
+            <li>Clear required fields</li>
+            <li>Attempt to submit</li>
+            <li>Verify validation errors are shown</li>
+        </ol>
+        <button onclick="runAllTests()">Run All Tests</button>
+    </div>
+
+    <div class="test-section">
+        <h2>Test Results</h2>
+        <div id="testResults"></div>
+    </div>
+
+    <script>
+        // Import the classes from index.html (simplified versions for testing)
+        class TaskHistoryManager {
+            constructor() {
+                this.storageKey = 'taskHistory_test';
+            }
+
+            _generateUUID() {
+                return 'test-' + Date.now();
+            }
+
+            _getStorage() {
+                try {
+                    const data = localStorage.getItem(this.storageKey);
+                    if (!data) {
+                        return { tasks: [] };
+                    }
+                    return JSON.parse(data);
+                } catch (error) {
+                    return { tasks: [] };
+                }
+            }
+
+            _saveStorage(data) {
+                localStorage.setItem(this.storageKey, JSON.stringify(data));
+            }
+
+            addTask(taskData, messageId) {
+                const storage = this._getStorage();
+                const now = new Date().toISOString();
+                
+                const taskRecord = {
+                    id: this._generateUUID(),
+                    taskName: taskData.taskName,
+                    description: taskData.description,
+                    priority: taskData.priority,
+                    assignedTo: taskData.assignedTo,
+                    user: taskData.user,
+                    messageId: messageId,
+                    timestamp: now,
+                    lastModified: now
+                };
+
+                storage.tasks.push(taskRecord);
+                this._saveStorage(storage);
+                
+                return taskRecord;
+            }
+
+            getTask(taskId) {
+                const storage = this._getStorage();
+                return storage.tasks.find(t => t.id === taskId) || null;
+            }
+
+            clear() {
+                localStorage.removeItem(this.storageKey);
+            }
+        }
+
+        class TaskFormManager {
+            constructor() {
+                this.mode = 'create';
+                this.currentTaskId = null;
+            }
+
+            enterUpdateMode(taskRecord) {
+                this.mode = 'update';
+                this.currentTaskId = taskRecord.id;
+            }
+
+            validateForm() {
+                const taskName = document.getElementById('testTaskName').value.trim();
+                const user = document.getElementById('testUser').value.trim();
+                const description = document.getElementById('testDescription').value.trim();
+
+                return taskName !== '' && description !== '' && user !== '';
+            }
+
+            getFormData() {
+                return {
+                    taskName: document.getElementById('testTaskName').value.trim(),
+                    description: document.getElementById('testDescription').value.trim(),
+                    priority: 'Medium',
+                    assignedTo: 'Development Team',
+                    user: document.getElementById('testUser').value.trim()
+                };
+            }
+        }
+
+        // Test infrastructure
+        let testResults = [];
+        let taskHistoryManager;
+        let taskFormManager;
+
+        function logResult(testName, passed, message) {
+            testResults.push({ testName, passed, message });
+            displayResults();
+        }
+
+        function displayResults() {
+            const container = document.getElementById('testResults');
+            container.innerHTML = '';
+
+            testResults.forEach(result => {
+                const div = document.createElement('div');
+                div.className = 'test-case';
+                div.innerHTML = `
+                    <h3>${result.testName}</h3>
+                    <div class="result ${result.passed ? 'pass' : 'fail'}">
+                        ${result.passed ? '✓ PASS' : '✗ FAIL'}: ${result.message}
+                    </div>
+                `;
+                container.appendChild(div);
+            });
+        }
+
+        async function runAllTests() {
+            testResults = [];
+            
+            // Setup
+            taskHistoryManager = new TaskHistoryManager();
+            taskFormManager = new TaskFormManager();
+            taskHistoryManager.clear();
+
+            // Create hidden form elements for testing
+            createTestFormElements();
+
+            await testValidationInUpdateMode();
+            await testValidationWithEmptyTaskName();
+            await testValidationWithEmptyDescription();
+            await testValidationWithEmptyUser();
+            await testValidationWithAllFieldsFilled();
+
+            // Cleanup
+            removeTestFormElements();
+            taskHistoryManager.clear();
+        }
+
+        function createTestFormElements() {
+            const container = document.createElement('div');
+            container.id = 'testFormContainer';
+            container.style.display = 'none';
+            container.innerHTML = `
+                <input type="text" id="testTaskName" value="">
+                <textarea id="testDescription"></textarea>
+                <input type="text" id="testUser" value="">
+            `;
+            document.body.appendChild(container);
+        }
+
+        function removeTestFormElements() {
+            const container = document.getElementById('testFormContainer');
+            if (container) {
+                container.remove();
+            }
+        }
+
+        async function testValidationInUpdateMode() {
+            // Create a task
+            const taskData = {
+                taskName: 'Test Task',
+                description: 'Test Description',
+                priority: 'Medium',
+                assignedTo: 'Development Team',
+                user: 'Test User'
+            };
+            const task = taskHistoryManager.addTask(taskData, 'msg-123');
+
+            // Enter update mode
+            taskFormManager.enterUpdateMode(task);
+
+            // Populate form
+            document.getElementById('testTaskName').value = task.taskName;
+            document.getElementById('testDescription').value = task.description;
+            document.getElementById('testUser').value = task.user;
+
+            // Clear task name (make it invalid)
+            document.getElementById('testTaskName').value = '';
+
+            // Validate
+            const isValid = taskFormManager.validateForm();
+
+            logResult(
+                'Test 1: Validation in Update Mode',
+                !isValid,
+                !isValid 
+                    ? 'Validation correctly failed when task name is empty in update mode'
+                    : 'Validation should have failed but passed'
+            );
+        }
+
+        async function testValidationWithEmptyTaskName() {
+            taskFormManager.mode = 'update';
+            
+            document.getElementById('testTaskName').value = '';
+            document.getElementById('testDescription').value = 'Valid description';
+            document.getElementById('testUser').value = 'Valid user';
+
+            const isValid = taskFormManager.validateForm();
+
+            logResult(
+                'Test 2: Empty Task Name',
+                !isValid,
+                !isValid 
+                    ? 'Validation correctly failed with empty task name'
+                    : 'Validation should have failed with empty task name'
+            );
+        }
+
+        async function testValidationWithEmptyDescription() {
+            taskFormManager.mode = 'update';
+            
+            document.getElementById('testTaskName').value = 'Valid task';
+            document.getElementById('testDescription').value = '';
+            document.getElementById('testUser').value = 'Valid user';
+
+            const isValid = taskFormManager.validateForm();
+
+            logResult(
+                'Test 3: Empty Description',
+                !isValid,
+                !isValid 
+                    ? 'Validation correctly failed with empty description'
+                    : 'Validation should have failed with empty description'
+            );
+        }
+
+        async function testValidationWithEmptyUser() {
+            taskFormManager.mode = 'update';
+            
+            document.getElementById('testTaskName').value = 'Valid task';
+            document.getElementById('testDescription').value = 'Valid description';
+            document.getElementById('testUser').value = '';
+
+            const isValid = taskFormManager.validateForm();
+
+            logResult(
+                'Test 4: Empty User',
+                !isValid,
+                !isValid 
+                    ? 'Validation correctly failed with empty user'
+                    : 'Validation should have failed with empty user'
+            );
+        }
+
+        async function testValidationWithAllFieldsFilled() {
+            taskFormManager.mode = 'update';
+            
+            document.getElementById('testTaskName').value = 'Valid task';
+            document.getElementById('testDescription').value = 'Valid description';
+            document.getElementById('testUser').value = 'Valid user';
+
+            const isValid = taskFormManager.validateForm();
+
+            logResult(
+                'Test 5: All Fields Valid',
+                isValid,
+                isValid 
+                    ? 'Validation correctly passed with all fields filled'
+                    : 'Validation should have passed with all fields filled'
+            );
+        }
+    </script>
+</body>
+</html>

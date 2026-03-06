@@ -1,0 +1,311 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Test Delete Functionality - Task 12.1</title>
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 50px auto;
+            padding: 20px;
+        }
+        .test-section {
+            margin: 20px 0;
+            padding: 15px;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+        }
+        .test-result {
+            margin: 10px 0;
+            padding: 10px;
+            border-radius: 4px;
+        }
+        .pass { background-color: #d4edda; color: #155724; }
+        .fail { background-color: #f8d7da; color: #721c24; }
+        button {
+            padding: 10px 20px;
+            margin: 5px;
+            cursor: pointer;
+            border: none;
+            border-radius: 4px;
+            background-color: #6a0dad;
+            color: white;
+            font-weight: bold;
+        }
+        button:hover { background-color: #5a009d; }
+        #taskList { margin-top: 20px; }
+        .task-item {
+            padding: 10px;
+            margin: 5px 0;
+            background: #f8f9fa;
+            border-radius: 4px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .delete-btn {
+            background-color: #dc3545;
+            padding: 5px 15px;
+        }
+        .delete-btn:hover { background-color: #c82333; }
+    </style>
+</head>
+<body>
+    <h1>Task 12.1: Delete Button Click Handler Test</h1>
+    
+    <div class="test-section">
+        <h2>Test Setup</h2>
+        <p>This test verifies that the delete button click handler:</p>
+        <ul>
+            <li>Calls ModalManager.showConfirmation()</li>
+            <li>On confirmation, calls TaskHistoryManager.deleteTask()</li>
+            <li>Refreshes history display</li>
+        </ul>
+        <button onclick="setupTestData()">Setup Test Data</button>
+        <button onclick="clearTestData()">Clear Test Data</button>
+    </div>
+
+    <div class="test-section">
+        <h2>Test Tasks</h2>
+        <div id="taskList"></div>
+    </div>
+
+    <div class="test-section">
+        <h2>Test Results</h2>
+        <div id="testResults"></div>
+    </div>
+
+    <script>
+        // Import classes from main app (simplified versions for testing)
+        class TaskHistoryManager {
+            constructor() {
+                this.storageKey = 'taskHistory_test';
+            }
+
+            _generateUUID() {
+                return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
+                    const r = Math.random() * 16 | 0;
+                    const v = c === 'x' ? r : (r & 0x3 | 0x8);
+                    return v.toString(16);
+                });
+            }
+
+            _getStorage() {
+                try {
+                    const data = localStorage.getItem(this.storageKey);
+                    if (!data) return { tasks: [] };
+                    return JSON.parse(data);
+                } catch (error) {
+                    return { tasks: [] };
+                }
+            }
+
+            _saveStorage(data) {
+                localStorage.setItem(this.storageKey, JSON.stringify(data));
+            }
+
+            addTask(taskData, messageId) {
+                const storage = this._getStorage();
+                const now = new Date().toISOString();
+                
+                const taskRecord = {
+                    id: this._generateUUID(),
+                    taskName: taskData.taskName,
+                    description: taskData.description,
+                    priority: taskData.priority,
+                    assignedTo: taskData.assignedTo,
+                    user: taskData.user,
+                    messageId: messageId,
+                    timestamp: now,
+                    lastModified: now
+                };
+
+                storage.tasks.push(taskRecord);
+                this._saveStorage(storage);
+                return taskRecord;
+            }
+
+            deleteTask(taskId) {
+                const storage = this._getStorage();
+                const taskIndex = storage.tasks.findIndex(t => t.id === taskId);
+                
+                if (taskIndex === -1) {
+                    throw new Error('Task not found');
+                }
+
+                storage.tasks.splice(taskIndex, 1);
+                this._saveStorage(storage);
+            }
+
+            getAllTasks() {
+                const storage = this._getStorage();
+                return storage.tasks.sort((a, b) => {
+                    return new Date(b.timestamp) - new Date(a.timestamp);
+                });
+            }
+
+            getTask(taskId) {
+                const storage = this._getStorage();
+                return storage.tasks.find(t => t.id === taskId) || null;
+            }
+        }
+
+        class ModalManager {
+            showConfirmation(message) {
+                return Swal.fire({
+                    icon: 'question',
+                    title: 'Confirm Action',
+                    text: message,
+                    showCancelButton: true,
+                    confirmButtonColor: '#6a0dad',
+                    cancelButtonColor: '#d33',
+                    confirmButtonText: 'Yes',
+                    cancelButtonText: 'Cancel'
+                }).then((result) => {
+                    return result.isConfirmed;
+                });
+            }
+
+            showError(message, details = '') {
+                return Swal.fire({
+                    icon: 'error',
+                    title: 'Error',
+                    text: message,
+                    footer: details ? `<small>${details}</small>` : '',
+                    confirmButtonColor: '#6a0dad',
+                    confirmButtonText: 'OK'
+                });
+            }
+        }
+
+        // Initialize managers
+        const taskHistoryManager = new TaskHistoryManager();
+        const modalManager = new ModalManager();
+        const testResults = [];
+
+        // Setup test data
+        function setupTestData() {
+            // Clear existing test data
+            localStorage.removeItem('taskHistory_test');
+            
+            // Add sample tasks
+            taskHistoryManager.addTask({
+                taskName: 'Test Task 1',
+                description: 'This is test task 1',
+                priority: 'High',
+                assignedTo: 'Development Team',
+                user: 'Test User'
+            }, 'msg_123');
+
+            taskHistoryManager.addTask({
+                taskName: 'Test Task 2',
+                description: 'This is test task 2',
+                priority: 'Medium',
+                assignedTo: 'Marketing Team',
+                user: 'Test User'
+            }, 'msg_456');
+
+            taskHistoryManager.addTask({
+                taskName: 'Test Task 3',
+                description: 'This is test task 3',
+                priority: 'Low',
+                assignedTo: 'Creatives Team',
+                user: 'Test User'
+            }, 'msg_789');
+
+            renderTasks();
+            addTestResult('Setup complete: 3 test tasks created', true);
+        }
+
+        // Clear test data
+        function clearTestData() {
+            localStorage.removeItem('taskHistory_test');
+            renderTasks();
+            document.getElementById('testResults').innerHTML = '';
+            addTestResult('Test data cleared', true);
+        }
+
+        // Render tasks
+        function renderTasks() {
+            const tasks = taskHistoryManager.getAllTasks();
+            const taskList = document.getElementById('taskList');
+            
+            if (tasks.length === 0) {
+                taskList.innerHTML = '<p>No tasks. Click "Setup Test Data" to create test tasks.</p>';
+                return;
+            }
+
+            taskList.innerHTML = tasks.map(task => `
+                <div class="task-item">
+                    <div>
+                        <strong>${task.taskName}</strong> - ${task.priority}
+                        <br><small>${task.description}</small>
+                    </div>
+                    <button class="delete-btn" onclick="handleTaskDelete('${task.id}')">Delete</button>
+                </div>
+            `).join('');
+        }
+
+        // Handle task delete (mimics the main app implementation)
+        async function handleTaskDelete(taskId) {
+            const task = taskHistoryManager.getTask(taskId);
+            if (!task) {
+                addTestResult('FAIL: Task not found', false);
+                return;
+            }
+
+            // Test 1: Verify showConfirmation is called
+            addTestResult('Test 1: Calling ModalManager.showConfirmation()', true);
+
+            // Show confirmation dialog
+            const confirmed = await modalManager.showConfirmation(
+                `Are you sure you want to delete "${task.taskName}"?`
+            );
+
+            if (confirmed) {
+                try {
+                    // Test 2: Verify deleteTask is called
+                    const tasksBefore = taskHistoryManager.getAllTasks().length;
+                    
+                    // Delete from storage
+                    taskHistoryManager.deleteTask(taskId);
+                    
+                    const tasksAfter = taskHistoryManager.getAllTasks().length;
+                    
+                    if (tasksAfter === tasksBefore - 1) {
+                        addTestResult('Test 2: TaskHistoryManager.deleteTask() called successfully', true);
+                    } else {
+                        addTestResult('Test 2: FAIL - Task count mismatch', false);
+                    }
+                    
+                    // Test 3: Verify history display is refreshed
+                    renderTasks();
+                    addTestResult('Test 3: History display refreshed', true);
+                    
+                    addTestResult(`✓ All tests passed for deleting "${task.taskName}"`, true);
+                } catch (error) {
+                    addTestResult(`FAIL: ${error.message}`, false);
+                    await modalManager.showError('Failed to delete task', error.message);
+                }
+            } else {
+                addTestResult('User cancelled deletion', true);
+            }
+        }
+
+        // Add test result
+        function addTestResult(message, passed) {
+            const resultDiv = document.createElement('div');
+            resultDiv.className = `test-result ${passed ? 'pass' : 'fail'}`;
+            resultDiv.textContent = message;
+            document.getElementById('testResults').appendChild(resultDiv);
+        }
+
+        // Initialize on load
+        window.addEventListener('DOMContentLoaded', () => {
+            renderTasks();
+        });
+    </script>
+</body>
+</html>

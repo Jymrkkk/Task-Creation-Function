@@ -1,0 +1,402 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Test Network Error Handling - Task 13.1</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    
+    <!-- SweetAlert2 for modal notifications -->
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    
+    <style>
+        * {
+            box-sizing: border-box;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+
+        body {
+            margin: 0;
+            min-height: 100vh;
+            background: linear-gradient(135deg, #6a0dad, #9b59b6);
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+
+        .card {
+            background: white;
+            width: 100%;
+            max-width: 600px;
+            padding: 30px;
+            border-radius: 16px;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.2);
+            margin-bottom: 30px;
+        }
+
+        .card h2 {
+            text-align: center;
+            color: #6a0dad;
+            margin-bottom: 20px;
+        }
+
+        .test-section {
+            margin-bottom: 30px;
+            padding: 20px;
+            background: #f8f9fa;
+            border-radius: 8px;
+        }
+
+        .test-section h3 {
+            color: #6a0dad;
+            margin-top: 0;
+        }
+
+        .form-group {
+            margin-bottom: 15px;
+        }
+
+        label {
+            font-weight: 600;
+            font-size: 14px;
+            color: #444;
+            display: block;
+            margin-bottom: 5px;
+        }
+
+        input, textarea, select {
+            width: 100%;
+            padding: 10px;
+            border-radius: 8px;
+            border: 1px solid #ddd;
+            outline: none;
+            transition: 0.3s;
+        }
+
+        input:focus, textarea:focus, select:focus {
+            border-color: #9b59b6;
+            box-shadow: 0 0 0 2px rgba(155, 89, 182, 0.2);
+        }
+
+        textarea {
+            resize: none;
+            height: 80px;
+        }
+
+        button {
+            width: 100%;
+            padding: 12px;
+            border: none;
+            border-radius: 8px;
+            background-color: #6a0dad;
+            color: white;
+            font-weight: bold;
+            cursor: pointer;
+            transition: 0.3s;
+            margin-top: 10px;
+        }
+
+        button:hover:not(:disabled) {
+            background-color: #5a009d;
+        }
+
+        button:disabled {
+            background-color: #bfa6d8;
+            cursor: not-allowed;
+        }
+
+        .test-result {
+            margin-top: 15px;
+            padding: 10px;
+            border-radius: 8px;
+            font-weight: bold;
+        }
+
+        .test-result.pass {
+            background-color: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+
+        .test-result.fail {
+            background-color: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+
+        .test-result.info {
+            background-color: #d1ecf1;
+            color: #0c5460;
+            border: 1px solid #bee5eb;
+        }
+
+        .instructions {
+            background: #fff3cd;
+            border: 1px solid #ffeaa7;
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+        }
+
+        .instructions h4 {
+            margin-top: 0;
+            color: #856404;
+        }
+
+        .instructions ol {
+            margin-bottom: 0;
+        }
+
+        .instructions li {
+            margin-bottom: 8px;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="card">
+        <h2>Network Error Handling Test - Task 13.1</h2>
+        
+        <div class="instructions">
+            <h4>Test Instructions:</h4>
+            <ol>
+                <li>Fill in the form below with test data</li>
+                <li>Click "Test Network Failure" to simulate a network error</li>
+                <li>Verify that an error modal appears with a user-friendly message</li>
+                <li>Verify that form data is preserved after the error</li>
+                <li>Click "Test Invalid URL" to test with a non-existent endpoint</li>
+                <li>Verify error handling works in both scenarios</li>
+            </ol>
+        </div>
+
+        <div class="test-section">
+            <h3>Test Form</h3>
+            
+            <div class="form-group">
+                <label for="taskName">Task Name</label>
+                <input type="text" id="taskName" placeholder="Enter task name" value="Test Network Error Task">
+            </div>
+
+            <div class="form-group">
+                <label for="description">Description</label>
+                <textarea id="description" placeholder="Enter task description">Testing network error handling for Task 13.1</textarea>
+            </div>
+
+            <div class="form-group">
+                <label for="priority">Priority</label>
+                <select id="priority">
+                    <option value="Low">Low</option>
+                    <option value="Medium" selected>Medium</option>
+                    <option value="High">High</option>
+                </select>
+            </div>
+
+            <div class="form-group">
+                <label for="assignedTo">Assigned To</label>
+                <select id="assignedTo">
+                    <option value="Marketing Team">Marketing Team</option>
+                    <option value="Development Team" selected>Development Team</option>
+                    <option value="Creatives Team">Creatives Team</option>
+                </select>
+            </div>
+
+            <div class="form-group">
+                <label for="user">Created By (User)</label>
+                <input type="text" id="user" placeholder="Enter your name" value="Test User">
+            </div>
+
+            <button onclick="testNetworkFailure()">Test Network Failure (Simulated)</button>
+            <button onclick="testInvalidUrl()">Test Invalid URL</button>
+            <button onclick="testOfflineMode()">Test Offline Mode</button>
+            
+            <div id="testResult"></div>
+        </div>
+
+        <div class="test-section">
+            <h3>Expected Behavior (Requirement 7.1)</h3>
+            <ul>
+                <li>✓ BackendClient catches fetch errors</li>
+                <li>✓ Error modal displays with user-friendly message</li>
+                <li>✓ Form data is preserved after error</li>
+                <li>✓ User can retry submission after fixing the issue</li>
+            </ul>
+        </div>
+    </div>
+
+    <script>
+        // ============================================
+        // BackendClient Class (from index.html)
+        // ============================================
+        class BackendClient {
+            constructor(webAppUrl) {
+                this.webAppUrl = webAppUrl;
+            }
+
+            async createTask(taskData) {
+                try {
+                    const response = await fetch(this.webAppUrl, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'text/plain;charset=utf-8'
+                        },
+                        body: JSON.stringify(taskData)
+                    });
+
+                    if (!response.ok) {
+                        throw new Error(`HTTP error! status: ${response.status}`);
+                    }
+
+                    const result = await response.json();
+                    
+                    if (!result.success) {
+                        throw new Error(result.error || 'Unknown error occurred');
+                    }
+
+                    return result;
+                } catch (error) {
+                    // Network failure or other errors
+                    if (error.name === 'TypeError' && error.message.includes('fetch')) {
+                        throw new Error('Network failure: Unable to reach the server. Please check your connection.');
+                    }
+                    throw error;
+                }
+            }
+        }
+
+        // ============================================
+        // ModalManager Class (from index.html)
+        // ============================================
+        class ModalManager {
+            showError(message, details = '') {
+                return Swal.fire({
+                    icon: 'error',
+                    title: 'Error',
+                    text: message,
+                    footer: details ? `<small>${details}</small>` : '',
+                    confirmButtonColor: '#6a0dad',
+                    confirmButtonText: 'OK'
+                });
+            }
+        }
+
+        // ============================================
+        // Test Functions
+        // ============================================
+        const modalManager = new ModalManager();
+        const testResult = document.getElementById('testResult');
+
+        function getFormData() {
+            return {
+                taskName: document.getElementById('taskName').value.trim(),
+                description: document.getElementById('description').value.trim(),
+                priority: document.getElementById('priority').value,
+                assignedTo: document.getElementById('assignedTo').value,
+                user: document.getElementById('user').value.trim()
+            };
+        }
+
+        function checkFormDataPreserved(originalData) {
+            const currentData = getFormData();
+            const preserved = 
+                currentData.taskName === originalData.taskName &&
+                currentData.description === originalData.description &&
+                currentData.priority === originalData.priority &&
+                currentData.assignedTo === originalData.assignedTo &&
+                currentData.user === originalData.user;
+            
+            return preserved;
+        }
+
+        async function testNetworkFailure() {
+            testResult.innerHTML = '<div class="test-result info">Running test...</div>';
+            
+            // Capture form data before test
+            const originalData = getFormData();
+            
+            // Create BackendClient with invalid URL that will cause network error
+            const backendClient = new BackendClient('http://invalid-url-that-does-not-exist.local');
+            
+            try {
+                await backendClient.createTask(originalData);
+                testResult.innerHTML = '<div class="test-result fail">❌ FAIL: Expected network error but request succeeded</div>';
+            } catch (error) {
+                // Check if error message is user-friendly
+                const isUserFriendly = error.message.includes('Network failure') || 
+                                      error.message.includes('Unable to reach the server');
+                
+                // Display error modal
+                await modalManager.showError('Failed to submit task', error.message);
+                
+                // Check if form data is preserved
+                const dataPreserved = checkFormDataPreserved(originalData);
+                
+                if (isUserFriendly && dataPreserved) {
+                    testResult.innerHTML = '<div class="test-result pass">✓ PASS: Network error caught, user-friendly message shown, form data preserved</div>';
+                } else if (!isUserFriendly) {
+                    testResult.innerHTML = '<div class="test-result fail">❌ FAIL: Error message not user-friendly: ' + error.message + '</div>';
+                } else {
+                    testResult.innerHTML = '<div class="test-result fail">❌ FAIL: Form data was not preserved</div>';
+                }
+            }
+        }
+
+        async function testInvalidUrl() {
+            testResult.innerHTML = '<div class="test-result info">Running test...</div>';
+            
+            const originalData = getFormData();
+            
+            // Test with a URL that returns 404
+            const backendClient = new BackendClient('https://httpstat.us/404');
+            
+            try {
+                await backendClient.createTask(originalData);
+                testResult.innerHTML = '<div class="test-result fail">❌ FAIL: Expected error but request succeeded</div>';
+            } catch (error) {
+                await modalManager.showError('Failed to submit task', error.message);
+                
+                const dataPreserved = checkFormDataPreserved(originalData);
+                
+                if (dataPreserved) {
+                    testResult.innerHTML = '<div class="test-result pass">✓ PASS: HTTP error caught, form data preserved</div>';
+                } else {
+                    testResult.innerHTML = '<div class="test-result fail">❌ FAIL: Form data was not preserved</div>';
+                }
+            }
+        }
+
+        async function testOfflineMode() {
+            testResult.innerHTML = '<div class="test-result info">Testing offline mode...</div>';
+            
+            const originalData = getFormData();
+            
+            // Simulate offline by using a URL that will timeout
+            const backendClient = new BackendClient('http://192.0.2.1:81'); // Non-routable IP
+            
+            // Set a timeout for the test
+            const timeoutPromise = new Promise((_, reject) => 
+                setTimeout(() => reject(new Error('Test timeout')), 5000)
+            );
+            
+            try {
+                await Promise.race([
+                    backendClient.createTask(originalData),
+                    timeoutPromise
+                ]);
+                testResult.innerHTML = '<div class="test-result fail">❌ FAIL: Expected network error</div>';
+            } catch (error) {
+                await modalManager.showError('Failed to submit task', error.message);
+                
+                const dataPreserved = checkFormDataPreserved(originalData);
+                
+                if (dataPreserved) {
+                    testResult.innerHTML = '<div class="test-result pass">✓ PASS: Offline error handled, form data preserved</div>';
+                } else {
+                    testResult.innerHTML = '<div class="test-result fail">❌ FAIL: Form data was not preserved</div>';
+                }
+            }
+        }
+    </script>
+
+</body>
+</html>

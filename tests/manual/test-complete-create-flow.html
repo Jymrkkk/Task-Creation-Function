@@ -1,0 +1,648 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Manual Test: Complete Create Flow</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <style>
+        * {
+            box-sizing: border-box;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+
+        body {
+            margin: 0;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+
+        .test-container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            padding: 30px;
+            border-radius: 12px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+        }
+
+        h1 {
+            color: #6a0dad;
+            margin-bottom: 10px;
+        }
+
+        .test-info {
+            background: #e8f4f8;
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 30px;
+            border-left: 4px solid #2196F3;
+        }
+
+        .test-section {
+            margin-bottom: 30px;
+            padding: 20px;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+        }
+
+        .test-section h2 {
+            color: #333;
+            margin-top: 0;
+            margin-bottom: 15px;
+            font-size: 20px;
+        }
+
+        .test-step {
+            margin-bottom: 20px;
+            padding: 15px;
+            background: #f9f9f9;
+            border-radius: 6px;
+            border-left: 4px solid #6a0dad;
+        }
+
+        .test-step h3 {
+            margin: 0 0 10px 0;
+            color: #6a0dad;
+            font-size: 16px;
+        }
+
+        .test-step p {
+            margin: 5px 0;
+            line-height: 1.6;
+        }
+
+        .expected {
+            background: #e8f5e9;
+            padding: 10px;
+            border-radius: 4px;
+            margin-top: 10px;
+            border-left: 3px solid #4caf50;
+        }
+
+        .expected strong {
+            color: #2e7d32;
+        }
+
+        .checkbox-container {
+            margin-top: 10px;
+        }
+
+        .checkbox-container label {
+            display: flex;
+            align-items: center;
+            cursor: pointer;
+            padding: 8px;
+            border-radius: 4px;
+            transition: background 0.2s;
+        }
+
+        .checkbox-container label:hover {
+            background: #f0f0f0;
+        }
+
+        .checkbox-container input[type="checkbox"] {
+            width: 20px;
+            height: 20px;
+            margin-right: 10px;
+            cursor: pointer;
+        }
+
+        .status-indicator {
+            display: inline-block;
+            padding: 4px 12px;
+            border-radius: 12px;
+            font-size: 12px;
+            font-weight: bold;
+            margin-left: 10px;
+        }
+
+        .status-pending {
+            background: #fff3cd;
+            color: #856404;
+        }
+
+        .status-pass {
+            background: #d4edda;
+            color: #155724;
+        }
+
+        .status-fail {
+            background: #f8d7da;
+            color: #721c24;
+        }
+
+        .action-buttons {
+            margin-top: 20px;
+            display: flex;
+            gap: 10px;
+        }
+
+        .btn {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 6px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .btn-primary {
+            background: #6a0dad;
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background: #5a009d;
+        }
+
+        .btn-secondary {
+            background: #6c757d;
+            color: white;
+        }
+
+        .btn-secondary:hover {
+            background: #5a6268;
+        }
+
+        .summary {
+            margin-top: 30px;
+            padding: 20px;
+            background: #f8f9fa;
+            border-radius: 8px;
+            border: 2px solid #dee2e6;
+        }
+
+        .summary h2 {
+            margin-top: 0;
+            color: #333;
+        }
+
+        .summary-stats {
+            display: flex;
+            gap: 20px;
+            margin-top: 15px;
+        }
+
+        .stat-box {
+            flex: 1;
+            padding: 15px;
+            border-radius: 6px;
+            text-align: center;
+        }
+
+        .stat-box.total {
+            background: #e3f2fd;
+            border: 2px solid #2196F3;
+        }
+
+        .stat-box.passed {
+            background: #e8f5e9;
+            border: 2px solid #4caf50;
+        }
+
+        .stat-box.failed {
+            background: #ffebee;
+            border: 2px solid #f44336;
+        }
+
+        .stat-number {
+            font-size: 32px;
+            font-weight: bold;
+            margin-bottom: 5px;
+        }
+
+        .stat-label {
+            font-size: 14px;
+            color: #666;
+        }
+
+        .note {
+            background: #fff3cd;
+            padding: 15px;
+            border-radius: 6px;
+            margin-top: 20px;
+            border-left: 4px solid #ffc107;
+        }
+
+        .note strong {
+            color: #856404;
+        }
+    </style>
+</head>
+<body>
+    <div class="test-container">
+        <h1>Manual Test: Complete Create Flow</h1>
+        <span class="status-indicator status-pending" id="overallStatus">PENDING</span>
+
+        <div class="test-info">
+            <p><strong>Task:</strong> 15.1 Test complete create flow</p>
+            <p><strong>Purpose:</strong> Verify that the complete task creation flow works end-to-end, including form submission, success modal, form persistence, history display, and "Create Another Task" functionality.</p>
+            <p><strong>Requirements Validated:</strong> 1.1, 1.2, 1.3, 2.1, 2.2, 2.3, 2.4, 3.1, 3.3, 3.4</p>
+        </div>
+
+        <!-- Test Section 1: Submit New Task -->
+        <div class="test-section">
+            <h2>Test Section 1: Submit New Task</h2>
+
+            <div class="test-step">
+                <h3>Step 1.1: Open the Application</h3>
+                <p>Open <code>index.html</code> in your browser.</p>
+                <div class="expected">
+                    <strong>Expected:</strong> The task creation form should be visible with all input fields empty (or default values).
+                </div>
+                <div class="checkbox-container">
+                    <label>
+                        <input type="checkbox" class="test-checkbox" data-step="1.1">
+                        <span>✓ Form is visible and fields are empty/default</span>
+                    </label>
+                </div>
+            </div>
+
+            <div class="test-step">
+                <h3>Step 1.2: Fill in Task Details</h3>
+                <p>Enter the following test data:</p>
+                <ul>
+                    <li><strong>Task Name:</strong> "Test Task - Complete Create Flow"</li>
+                    <li><strong>Description:</strong> "This is a test task to verify the complete create flow functionality."</li>
+                    <li><strong>Priority:</strong> High</li>
+                    <li><strong>Assigned To:</strong> Development Team</li>
+                    <li><strong>Created By:</strong> "Test User"</li>
+                </ul>
+                <div class="expected">
+                    <strong>Expected:</strong> All fields should accept input and display the entered values.
+                </div>
+                <div class="checkbox-container">
+                    <label>
+                        <input type="checkbox" class="test-checkbox" data-step="1.2">
+                        <span>✓ All fields filled with test data</span>
+                    </label>
+                </div>
+            </div>
+
+            <div class="test-step">
+                <h3>Step 1.3: Submit the Task</h3>
+                <p>Click the "Submit Task" button.</p>
+                <div class="expected">
+                    <strong>Expected:</strong> 
+                    <ul>
+                        <li>Button should show "Sending..." while processing</li>
+                        <li>Button should be disabled during submission</li>
+                        <li>No errors should occur</li>
+                    </ul>
+                </div>
+                <div class="checkbox-container">
+                    <label>
+                        <input type="checkbox" class="test-checkbox" data-step="1.3">
+                        <span>✓ Button shows loading state and submission completes</span>
+                    </label>
+                </div>
+            </div>
+        </div>
+
+        <!-- Test Section 2: Verify Success Modal -->
+        <div class="test-section">
+            <h2>Test Section 2: Verify Success Modal Appears</h2>
+
+            <div class="test-step">
+                <h3>Step 2.1: Check Success Modal</h3>
+                <p>After submission completes, observe the modal that appears.</p>
+                <div class="expected">
+                    <strong>Expected:</strong>
+                    <ul>
+                        <li>A success modal should appear with a success icon</li>
+                        <li>Modal title should be "Task Submitted!"</li>
+                        <li>Modal should display the task name: "Test Task - Complete Create Flow"</li>
+                        <li>Modal should have an "OK" button to dismiss</li>
+                    </ul>
+                </div>
+                <div class="checkbox-container">
+                    <label>
+                        <input type="checkbox" class="test-checkbox" data-step="2.1">
+                        <span>✓ Success modal appears with correct task name</span>
+                    </label>
+                </div>
+            </div>
+
+            <div class="test-step">
+                <h3>Step 2.2: Dismiss the Modal</h3>
+                <p>Click the "OK" button to dismiss the success modal.</p>
+                <div class="expected">
+                    <strong>Expected:</strong> Modal should close and the form should remain visible.
+                </div>
+                <div class="checkbox-container">
+                    <label>
+                        <input type="checkbox" class="test-checkbox" data-step="2.2">
+                        <span>✓ Modal dismisses successfully</span>
+                    </label>
+                </div>
+            </div>
+        </div>
+
+        <!-- Test Section 3: Verify Form Data Persists -->
+        <div class="test-section">
+            <h2>Test Section 3: Verify Form Data Persists</h2>
+
+            <div class="test-step">
+                <h3>Step 3.1: Check Form Fields After Submission</h3>
+                <p>After dismissing the modal, check all form fields.</p>
+                <div class="expected">
+                    <strong>Expected:</strong>
+                    <ul>
+                        <li>Task Name field should still contain: "Test Task - Complete Create Flow"</li>
+                        <li>Description field should still contain: "This is a test task to verify the complete create flow functionality."</li>
+                        <li>Priority should still be: High</li>
+                        <li>Assigned To should still be: Development Team</li>
+                        <li>Created By should still contain: "Test User"</li>
+                        <li>Form fields should NOT be cleared</li>
+                    </ul>
+                </div>
+                <div class="checkbox-container">
+                    <label>
+                        <input type="checkbox" class="test-checkbox" data-step="3.1">
+                        <span>✓ All form fields retain their submitted values</span>
+                    </label>
+                </div>
+            </div>
+
+            <div class="test-step">
+                <h3>Step 3.2: Check Status Text Area</h3>
+                <p>Check the status text area below the buttons.</p>
+                <div class="expected">
+                    <strong>Expected:</strong> The status text area should be empty (no text-based success messages like "✅ Task submitted successfully").
+                </div>
+                <div class="checkbox-container">
+                    <label>
+                        <input type="checkbox" class="test-checkbox" data-step="3.2">
+                        <span>✓ No text-based success messages in status area</span>
+                    </label>
+                </div>
+            </div>
+        </div>
+
+        <!-- Test Section 4: Verify Task Appears in History -->
+        <div class="test-section">
+            <h2>Test Section 4: Verify Task Appears in History</h2>
+
+            <div class="test-step">
+                <h3>Step 4.1: Scroll to Task History Section</h3>
+                <p>Scroll down to the "Task History" section below the form.</p>
+                <div class="expected">
+                    <strong>Expected:</strong> The task history section should be visible.
+                </div>
+                <div class="checkbox-container">
+                    <label>
+                        <input type="checkbox" class="test-checkbox" data-step="4.1">
+                        <span>✓ Task history section is visible</span>
+                    </label>
+                </div>
+            </div>
+
+            <div class="test-step">
+                <h3>Step 4.2: Verify Task Appears in History</h3>
+                <p>Check if the submitted task appears in the history list.</p>
+                <div class="expected">
+                    <strong>Expected:</strong>
+                    <ul>
+                        <li>The task "Test Task - Complete Create Flow" should appear in the history</li>
+                        <li>Task should display all fields: name, description, priority, assigned team, creator</li>
+                        <li>Task should show a timestamp</li>
+                        <li>Task should have "Edit" and "Delete" buttons</li>
+                        <li>Priority badge should be red (High priority)</li>
+                    </ul>
+                </div>
+                <div class="checkbox-container">
+                    <label>
+                        <input type="checkbox" class="test-checkbox" data-step="4.2">
+                        <span>✓ Task appears in history with all details</span>
+                    </label>
+                </div>
+            </div>
+
+            <div class="test-step">
+                <h3>Step 4.3: Verify Task Order</h3>
+                <p>If there are multiple tasks in history, check the order.</p>
+                <div class="expected">
+                    <strong>Expected:</strong> The most recently submitted task should appear at the top (reverse chronological order).
+                </div>
+                <div class="checkbox-container">
+                    <label>
+                        <input type="checkbox" class="test-checkbox" data-step="4.3">
+                        <span>✓ Tasks are in reverse chronological order (newest first)</span>
+                    </label>
+                </div>
+            </div>
+        </div>
+
+        <!-- Test Section 5: Verify "Create Another Task" Button -->
+        <div class="test-section">
+            <h2>Test Section 5: Verify "Create Another Task" Button Works</h2>
+
+            <div class="test-step">
+                <h3>Step 5.1: Check Button Visibility</h3>
+                <p>Scroll back to the form and check for the "Create Another Task" button.</p>
+                <div class="expected">
+                    <strong>Expected:</strong>
+                    <ul>
+                        <li>A green "Create Another Task" button should be visible below the "Submit Task" button</li>
+                        <li>Button should be enabled and clickable</li>
+                    </ul>
+                </div>
+                <div class="checkbox-container">
+                    <label>
+                        <input type="checkbox" class="test-checkbox" data-step="5.1">
+                        <span>✓ "Create Another Task" button is visible and enabled</span>
+                    </label>
+                </div>
+            </div>
+
+            <div class="test-step">
+                <h3>Step 5.2: Click "Create Another Task"</h3>
+                <p>Click the "Create Another Task" button.</p>
+                <div class="expected">
+                    <strong>Expected:</strong>
+                    <ul>
+                        <li>All form fields should be cleared to their default values</li>
+                        <li>Task Name should be empty</li>
+                        <li>Description should be empty</li>
+                        <li>Priority should reset to "Low"</li>
+                        <li>Assigned To should reset to "Marketing Team"</li>
+                        <li>Created By should be empty</li>
+                        <li>The "Create Another Task" button should be hidden</li>
+                        <li>Submit button should show "Submit Task" (not "Update Task")</li>
+                    </ul>
+                </div>
+                <div class="checkbox-container">
+                    <label>
+                        <input type="checkbox" class="test-checkbox" data-step="5.2">
+                        <span>✓ Form clears and button hides correctly</span>
+                    </label>
+                </div>
+            </div>
+        </div>
+
+        <!-- Test Section 6: Verify LocalStorage Persistence -->
+        <div class="test-section">
+            <h2>Test Section 6: Verify LocalStorage Persistence</h2>
+
+            <div class="test-step">
+                <h3>Step 6.1: Check LocalStorage</h3>
+                <p>Open browser DevTools (F12), go to Application/Storage tab, and check LocalStorage.</p>
+                <div class="expected">
+                    <strong>Expected:</strong>
+                    <ul>
+                        <li>A key named "taskHistory" should exist in LocalStorage</li>
+                        <li>The value should be a JSON object containing a "tasks" array</li>
+                        <li>The submitted task should be in the array with all fields including messageId</li>
+                    </ul>
+                </div>
+                <div class="checkbox-container">
+                    <label>
+                        <input type="checkbox" class="test-checkbox" data-step="6.1">
+                        <span>✓ Task is stored in LocalStorage with messageId</span>
+                    </label>
+                </div>
+            </div>
+
+            <div class="test-step">
+                <h3>Step 6.2: Reload Page</h3>
+                <p>Refresh the browser page (F5 or Ctrl+R).</p>
+                <div class="expected">
+                    <strong>Expected:</strong>
+                    <ul>
+                        <li>Page should reload successfully</li>
+                        <li>Task history should still display the submitted task</li>
+                        <li>All task details should be preserved</li>
+                    </ul>
+                </div>
+                <div class="checkbox-container">
+                    <label>
+                        <input type="checkbox" class="test-checkbox" data-step="6.2">
+                        <span>✓ Task persists after page reload</span>
+                    </label>
+                </div>
+            </div>
+        </div>
+
+        <!-- Action Buttons -->
+        <div class="action-buttons">
+            <button class="btn btn-primary" onclick="calculateResults()">Calculate Results</button>
+            <button class="btn btn-secondary" onclick="resetTest()">Reset Test</button>
+        </div>
+
+        <!-- Summary Section -->
+        <div class="summary" id="summary" style="display: none;">
+            <h2>Test Summary</h2>
+            <div class="summary-stats">
+                <div class="stat-box total">
+                    <div class="stat-number" id="totalSteps">0</div>
+                    <div class="stat-label">Total Steps</div>
+                </div>
+                <div class="stat-box passed">
+                    <div class="stat-number" id="passedSteps">0</div>
+                    <div class="stat-label">Passed</div>
+                </div>
+                <div class="stat-box failed">
+                    <div class="stat-number" id="failedSteps">0</div>
+                    <div class="stat-label">Failed</div>
+                </div>
+            </div>
+            <div id="resultMessage" style="margin-top: 20px; font-size: 18px; font-weight: bold;"></div>
+        </div>
+
+        <!-- Note -->
+        <div class="note">
+            <p><strong>Note:</strong> This is a manual test. Check each step carefully and mark the checkbox only if the expected behavior is observed. If any step fails, investigate the issue before proceeding.</p>
+            <p><strong>Backend Requirement:</strong> Ensure the Google Apps Script backend is deployed and the URL in <code>index.html</code> is correct. The backend must return a JSON response with <code>messageId</code> for this test to pass completely.</p>
+        </div>
+    </div>
+
+    <script>
+        function calculateResults() {
+            const checkboxes = document.querySelectorAll('.test-checkbox');
+            const total = checkboxes.length;
+            let passed = 0;
+
+            checkboxes.forEach(checkbox => {
+                if (checkbox.checked) {
+                    passed++;
+                }
+            });
+
+            const failed = total - passed;
+
+            // Update summary
+            document.getElementById('totalSteps').textContent = total;
+            document.getElementById('passedSteps').textContent = passed;
+            document.getElementById('failedSteps').textContent = failed;
+
+            // Show summary
+            document.getElementById('summary').style.display = 'block';
+
+            // Update result message
+            const resultMessage = document.getElementById('resultMessage');
+            const overallStatus = document.getElementById('overallStatus');
+
+            if (passed === total) {
+                resultMessage.textContent = '✅ All tests passed! The complete create flow is working correctly.';
+                resultMessage.style.color = '#155724';
+                overallStatus.textContent = 'PASSED';
+                overallStatus.className = 'status-indicator status-pass';
+            } else if (passed === 0) {
+                resultMessage.textContent = '❌ All tests failed. Please review the implementation.';
+                resultMessage.style.color = '#721c24';
+                overallStatus.textContent = 'FAILED';
+                overallStatus.className = 'status-indicator status-fail';
+            } else {
+                resultMessage.textContent = `⚠️ ${passed} out of ${total} tests passed. Please review failed steps.`;
+                resultMessage.style.color = '#856404';
+                overallStatus.textContent = 'PARTIAL';
+                overallStatus.className = 'status-indicator status-pending';
+            }
+
+            // Scroll to summary
+            document.getElementById('summary').scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+        }
+
+        function resetTest() {
+            // Uncheck all checkboxes
+            const checkboxes = document.querySelectorAll('.test-checkbox');
+            checkboxes.forEach(checkbox => {
+                checkbox.checked = false;
+            });
+
+            // Hide summary
+            document.getElementById('summary').style.display = 'none';
+
+            // Reset overall status
+            const overallStatus = document.getElementById('overallStatus');
+            overallStatus.textContent = 'PENDING';
+            overallStatus.className = 'status-indicator status-pending';
+
+            // Scroll to top
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        }
+
+        // Auto-save checkbox state to localStorage
+        document.addEventListener('DOMContentLoaded', () => {
+            const checkboxes = document.querySelectorAll('.test-checkbox');
+            
+            // Load saved state
+            checkboxes.forEach(checkbox => {
+                const step = checkbox.dataset.step;
+                const saved = localStorage.getItem(`test-15.1-step-${step}`);
+                if (saved === 'true') {
+                    checkbox.checked = true;
+                }
+            });
+
+            // Save state on change
+            checkboxes.forEach(checkbox => {
+                checkbox.addEventListener('change', () => {
+                    const step = checkbox.dataset.step;
+                    localStorage.setItem(`test-15.1-step-${step}`, checkbox.checked);
+                });
+            });
+        });
+    </script>
+</body>
+</html>

@@ -1,0 +1,839 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Task Manager</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    
+    <!-- fast-check for property-based testing -->
+    <script src="https://cdn.jsdelivr.net/npm/fast-check@3.15.0/lib/bundle.js"></script>
+    
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    
+    <!-- External Stylesheet -->
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+
+    <!-- Page Header -->
+    <div class="page-header">
+        <div class="page-icon">✦</div>
+        <h1>Task <span>Manager</span></h1>
+    </div>
+
+    <!-- Two-Panel Layout -->
+    <div class="layout">
+        <!-- LEFT: CREATE TASK TRIGGER -->
+        <div class="panel panel-left">
+            <div class="panel-head">
+                <h2>Create Task</h2>
+                <p>Add a new task to your board</p>
+            </div>
+            <div class="create-trigger">
+                <div class="trigger-icon">✦</div>
+                <h3>New Task</h3>
+                <p>Click the button below to open the form and create a new task.</p>
+                <button class="btn-open-modal" onclick="openModal()">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                        <line x1="12" y1="5" x2="12" y2="19"/>
+                        <line x1="5" y1="12" x2="19" y2="12"/>
+                    </svg>
+                    Create Task
+                </button>
+            </div>
+            <div class="quick-stats">
+                <div class="qs-row">
+                    <span class="qs-label">📋 Total Tasks</span>
+                    <span class="qs-val" id="qsTotal">0</span>
+                </div>
+                <div class="qs-row">
+                    <span class="qs-label">🔴 High Priority</span>
+                    <span class="qs-val" id="qsHigh">0</span>
+                </div>
+                <div class="qs-row">
+                    <span class="qs-label">🟡 Medium Priority</span>
+                    <span class="qs-val" id="qsMed">0</span>
+                </div>
+                <div class="qs-row">
+                    <span class="qs-label">🟢 Low Priority</span>
+                    <span class="qs-val" id="qsLow">0</span>
+                </div>
+                <div class="qs-row">
+                    <span class="qs-label">🔵 In Progress</span>
+                    <span class="qs-val" id="qsInProgress">0</span>
+                </div>
+                <div class="qs-row">
+                    <span class="qs-label">✅ Done</span>
+                    <span class="qs-val" id="qsDone">0</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- RIGHT: TASK HISTORY -->
+        <div class="panel panel-right">
+            <div class="panel-head">
+                <h2>Task History</h2>
+                <div class="head-right">
+                    <span class="task-count-pill" id="taskCount">0 tasks</span>
+                    <button class="btn-refresh" onclick="refreshHistoryDisplay()">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
+                            <path d="M23 4v6h-6M1 20v-6h6"/>
+                            <path d="M3.51 9a9 9 0 0114.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0020.49 15"/>
+                        </svg>
+                        Refresh
+                    </button>
+                </div>
+            </div>
+            <div class="task-list" id="taskHistory"></div>
+        </div>
+    </div>
+
+    <!-- CREATE / EDIT MODAL -->
+    <div class="overlay" id="overlay">
+        <div class="modal">
+            <div class="modal-head" id="mHead">
+                <div class="mh-left">
+                    <div class="mh-icon" id="mIcon">✦</div>
+                    <h2 id="mTitle">Create Task</h2>
+                    <p id="mSub">Fill in the details below</p>
+                </div>
+                <button class="modal-close" onclick="closeModal()">✕</button>
+            </div>
+            <div class="modal-body">
+                <div class="form-group">
+                    <label class="form-label">Task Name</label>
+                    <input class="form-input" id="taskName" type="text" placeholder="Enter task name" required>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Description</label>
+                    <textarea class="form-textarea" id="description" placeholder="Enter task description" required></textarea>
+                </div>
+                <div style="display:grid; grid-template-columns:1fr 1fr; gap:14px;">
+                    <div class="form-group">
+                        <label class="form-label">Priority</label>
+                        <select class="form-select" id="priority">
+                            <option value="Low">Low</option>
+                            <option value="Medium">Medium</option>
+                            <option value="High">High</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Assigned To</label>
+                        <select class="form-select" id="assignedTo">
+                            <option value="Marketing Team">Marketing Team</option>
+                            <option value="Creatives Team">Creatives Team</option>
+                            <option value="Development Team">Development Team</option>
+                            <option value="Operations Team">Operations Team</option>
+                            <option value="Everyone">Everyone</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Created By (User)</label>
+                    <input class="form-input" id="user" type="text" placeholder="Enter your name" required>
+                </div>
+            </div>
+            <div class="modal-foot">
+                <button class="btn-cancel" onclick="closeModal()">Cancel</button>
+                <button class="btn-msave" id="mSave" onclick="sendTestTask()">✦ Create Task</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- NOTIFICATION MODAL -->
+    <div class="notif-overlay" id="notifOverlay">
+        <div class="notif-modal" id="notifModal">
+            <div class="notif-icon" id="notifIcon"></div>
+            <h3 class="notif-title" id="notifTitle"></h3>
+            <p class="notif-text" id="notifText"></p>
+            <div class="notif-actions" id="notifActions">
+                <button class="notif-btn" id="notifBtn" onclick="closeNotification()">Got it</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // ============================================
+        // CONFIGURATION
+        // ============================================
+        const WEB_APP_URL = 'https://script.google.com/macros/s/AKfycbzqhjMmprgaNMdR8ZgFS91wwRqsl65jpDXvs2HQZ1uNIhYim4wY0745CdJBdPmtrRBPrw/exec';
+
+        // ============================================
+        // TaskHistoryManager Class
+        // ============================================
+        class TaskHistoryManager {
+            constructor() {
+                this.storageKey = 'taskHistory';
+            }
+
+            _generateUUID() {
+                return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
+                    const r = Math.random() * 16 | 0;
+                    const v = c === 'x' ? r : (r & 0x3 | 0x8);
+                    return v.toString(16);
+                });
+            }
+
+            _getStorage() {
+                try {
+                    const data = localStorage.getItem(this.storageKey);
+                    if (!data) {
+                        return { tasks: [] };
+                    }
+                    return JSON.parse(data);
+                } catch (error) {
+                    console.error('Error reading from LocalStorage:', error);
+                    return { tasks: [] };
+                }
+            }
+
+            _saveStorage(data) {
+                try {
+                    localStorage.setItem(this.storageKey, JSON.stringify(data));
+                } catch (error) {
+                    if (error.name === 'QuotaExceededError') {
+                        throw new Error('LocalStorage quota exceeded. Please delete old tasks.');
+                    }
+                    throw error;
+                }
+            }
+
+            addTask(taskData, messageId) {
+                const storage = this._getStorage();
+                const now = new Date().toISOString();
+                
+                const taskRecord = {
+                    id: this._generateUUID(),
+                    taskName: taskData.taskName,
+                    description: taskData.description,
+                    priority: taskData.priority,
+                    assignedTo: taskData.assignedTo,
+                    user: taskData.user,
+                    messageId: messageId,
+                    timestamp: now,
+                    lastModified: now
+                };
+
+                storage.tasks.push(taskRecord);
+                this._saveStorage(storage);
+                
+                return taskRecord;
+            }
+
+            updateTask(taskId, taskData, newMessageId = null) {
+                const storage = this._getStorage();
+                const taskIndex = storage.tasks.findIndex(t => t.id === taskId);
+                
+                if (taskIndex === -1) {
+                    throw new Error('Task not found');
+                }
+
+                const existingTask = storage.tasks[taskIndex];
+                
+                storage.tasks[taskIndex] = {
+                    ...existingTask,
+                    taskName: taskData.taskName,
+                    description: taskData.description,
+                    priority: taskData.priority,
+                    assignedTo: taskData.assignedTo,
+                    user: taskData.user,
+                    messageId: newMessageId !== null ? newMessageId : existingTask.messageId,
+                    lastModified: new Date().toISOString()
+                };
+
+                this._saveStorage(storage);
+                
+                return storage.tasks[taskIndex];
+            }
+
+            deleteTask(taskId) {
+                const storage = this._getStorage();
+                const taskIndex = storage.tasks.findIndex(t => t.id === taskId);
+                
+                if (taskIndex === -1) {
+                    throw new Error('Task not found');
+                }
+
+                storage.tasks.splice(taskIndex, 1);
+                this._saveStorage(storage);
+            }
+
+            getAllTasks() {
+                const storage = this._getStorage();
+                return storage.tasks.sort((a, b) => {
+                    return new Date(b.timestamp) - new Date(a.timestamp);
+                });
+            }
+
+            getTask(taskId) {
+                const storage = this._getStorage();
+                return storage.tasks.find(t => t.id === taskId) || null;
+            }
+        }
+
+        // ============================================
+        // DashboardClient Class
+        // ============================================
+        class DashboardClient {
+            constructor(webAppUrl) {
+                this.webAppUrl = webAppUrl;
+            }
+
+            async fetchDashboardData() {
+                try {
+                    const url = `${this.webAppUrl}?action=getDashboard`;
+                    
+                    const response = await fetch(url, {
+                        method: 'GET',
+                        headers: {
+                            'Content-Type': 'application/json'
+                        }
+                    });
+
+                    if (!response.ok) {
+                        throw new Error(`HTTP error! status: ${response.status}`);
+                    }
+
+                    const result = await response.json();
+                    
+                    if (!result.success) {
+                        throw new Error(result.error || 'Unknown error occurred');
+                    }
+
+                    return result.data;
+                } catch (error) {
+                    if (error.name === 'TypeError' && error.message.includes('fetch')) {
+                        throw new Error('Network failure: Unable to reach the server. Please check your connection.');
+                    }
+                    throw error;
+                }
+            }
+        }
+
+        // ============================================
+        // BackendClient Class
+        // ============================================
+        class BackendClient {
+            constructor(webAppUrl) {
+                this.webAppUrl = webAppUrl;
+            }
+
+            async createTask(taskData) {
+                try {
+                    const response = await fetch(this.webAppUrl, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'text/plain;charset=utf-8'
+                        },
+                        body: JSON.stringify(taskData)
+                    });
+
+                    if (!response.ok) {
+                        throw new Error(`HTTP error! status: ${response.status}`);
+                    }
+
+                    const result = await response.json();
+                    
+                    if (!result.success) {
+                        throw new Error(result.error || 'Unknown error occurred');
+                    }
+
+                    return result;
+                } catch (error) {
+                    if (error.name === 'TypeError' && error.message.includes('fetch')) {
+                        throw new Error('Network failure: Unable to reach the server. Please check your connection.');
+                    }
+                    throw error;
+                }
+            }
+
+            async updateTask(taskData, messageId) {
+                try {
+                    const payload = {
+                        ...taskData,
+                        messageId: messageId
+                    };
+
+                    const response = await fetch(this.webAppUrl, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'text/plain;charset=utf-8'
+                        },
+                        body: JSON.stringify(payload)
+                    });
+
+                    if (!response.ok) {
+                        throw new Error(`HTTP error! status: ${response.status}`);
+                    }
+
+                    const result = await response.json();
+                    
+                    if (!result.success) {
+                        throw new Error(result.error || 'Unknown error occurred');
+                    }
+
+                    return result;
+                } catch (error) {
+                    if (error.name === 'TypeError' && error.message.includes('fetch')) {
+                        throw new Error('Network failure: Unable to reach the server. Please check your connection.');
+                    }
+                    throw error;
+                }
+            }
+        }
+
+        // ============================================
+        // ModalManager Class
+        // ============================================
+        class ModalManager {
+            constructor() {
+                this.overlay = document.getElementById('overlay');
+                this.modalHead = document.getElementById('mHead');
+                this.modalIcon = document.getElementById('mIcon');
+                this.modalTitle = document.getElementById('mTitle');
+                this.modalSub = document.getElementById('mSub');
+                this.saveButton = document.getElementById('mSave');
+                this.isEditMode = false;
+                this.currentTaskId = null;
+            }
+
+            open(mode = 'create', taskData = null) {
+                this.isEditMode = mode === 'edit';
+                this.currentTaskId = taskData ? taskData.id : null;
+
+                if (this.isEditMode) {
+                    this.modalHead.classList.add('edit-mode');
+                    this.modalIcon.textContent = '✏️';
+                    this.modalTitle.textContent = 'Edit Task';
+                    this.modalSub.textContent = 'Update task details';
+                    this.saveButton.textContent = '✓ Update Task';
+                    this.saveButton.classList.add('edit');
+                    
+                    // Populate form with existing data
+                    if (taskData) {
+                        document.getElementById('taskName').value = taskData.taskName;
+                        document.getElementById('description').value = taskData.description;
+                        document.getElementById('priority').value = taskData.priority;
+                        document.getElementById('assignedTo').value = taskData.assignedTo;
+                        document.getElementById('user').value = taskData.user;
+                    }
+                } else {
+                    this.modalHead.classList.remove('edit-mode');
+                    this.modalIcon.textContent = '✦';
+                    this.modalTitle.textContent = 'Create Task';
+                    this.modalSub.textContent = 'Fill in the details below';
+                    this.saveButton.textContent = '✦ Create Task';
+                    this.saveButton.classList.remove('edit');
+                    
+                    // Clear form
+                    document.getElementById('taskName').value = '';
+                    document.getElementById('description').value = '';
+                    document.getElementById('priority').value = 'Low';
+                    document.getElementById('assignedTo').value = 'Marketing Team';
+                    document.getElementById('user').value = '';
+                }
+
+                this.overlay.classList.add('open');
+            }
+
+            close() {
+                this.overlay.classList.remove('open');
+                this.isEditMode = false;
+                this.currentTaskId = null;
+            }
+
+            getMode() {
+                return this.isEditMode ? 'edit' : 'create';
+            }
+
+            getCurrentTaskId() {
+                return this.currentTaskId;
+            }
+        }
+
+        // ============================================
+        // TaskFormManager Class
+        // ============================================
+        class TaskFormManager {
+            constructor() {
+                this.fields = {
+                    taskName: document.getElementById('taskName'),
+                    description: document.getElementById('description'),
+                    priority: document.getElementById('priority'),
+                    assignedTo: document.getElementById('assignedTo'),
+                    user: document.getElementById('user')
+                };
+            }
+
+            getFormData() {
+                return {
+                    taskName: this.fields.taskName.value.trim(),
+                    description: this.fields.description.value.trim(),
+                    priority: this.fields.priority.value,
+                    assignedTo: this.fields.assignedTo.value,
+                    user: this.fields.user.value.trim()
+                };
+            }
+
+            validateForm() {
+                const data = this.getFormData();
+                
+                if (!data.taskName) {
+                    throw new Error('Task name is required');
+                }
+                
+                if (!data.description) {
+                    throw new Error('Description is required');
+                }
+                
+                if (!data.user) {
+                    throw new Error('User name is required');
+                }
+                
+                return true;
+            }
+
+            clearForm() {
+                this.fields.taskName.value = '';
+                this.fields.description.value = '';
+                this.fields.priority.value = 'Low';
+                this.fields.assignedTo.value = 'Marketing Team';
+                this.fields.user.value = '';
+            }
+        }
+
+        // ============================================
+        // HistoryRenderer Class
+        // ============================================
+        class HistoryRenderer {
+            constructor(containerId) {
+                this.container = document.getElementById(containerId);
+            }
+
+            renderTasks(tasks) {
+                if (!tasks || tasks.length === 0) {
+                    this.renderEmpty();
+                    return;
+                }
+
+                const html = tasks.map(task => this.renderTaskCard(task)).join('');
+                this.container.innerHTML = html;
+            }
+
+            renderTaskCard(task) {
+                const priorityClass = `p-${task.priority.toLowerCase()}`;
+                const date = new Date(task.timestamp).toLocaleString();
+                
+                return `
+                    <div class="task-card">
+                        <div class="tc-top">
+                            <div class="tc-name">${this.escapeHtml(task.taskName)}</div>
+                            <div class="p-badge ${priorityClass}">${task.priority}</div>
+                        </div>
+                        <div class="tc-desc">${this.escapeHtml(task.description)}</div>
+                        <div class="tc-meta">
+                            <div class="tc-meta-row"><strong>Assigned:</strong> ${this.escapeHtml(task.assignedTo)}</div>
+                            <div class="tc-meta-row"><strong>Created by:</strong> ${this.escapeHtml(task.user)}</div>
+                        </div>
+                        <div class="tc-date">📅 ${date}</div>
+                        <div class="tc-actions">
+                            <button class="btn-edit-card" onclick="handleTaskEdit('${task.id}')">
+                                ✏️ Edit
+                            </button>
+                            <button class="btn-del-card" onclick="handleTaskDelete('${task.id}')">
+                                🗑️ Delete
+                            </button>
+                        </div>
+                    </div>
+                `;
+            }
+
+            renderEmpty() {
+                this.container.innerHTML = `
+                    <div class="empty-state">
+                        <div class="ei">📋</div>
+                        <h3>No tasks yet</h3>
+                        <p>Create your first task to get started</p>
+                    </div>
+                `;
+            }
+
+            renderLoading() {
+                this.container.innerHTML = `
+                    <div class="loading-state">
+                        <div class="loading-spinner"></div>
+                        <p>Loading tasks...</p>
+                    </div>
+                `;
+            }
+
+            escapeHtml(text) {
+                const div = document.createElement('div');
+                div.textContent = text;
+                return div.innerHTML;
+            }
+        }
+
+        // ============================================
+        // GLOBAL INSTANCES
+        // ============================================
+        const historyManager = new TaskHistoryManager();
+        const backendClient = new BackendClient(WEB_APP_URL);
+        const dashboardClient = new DashboardClient(WEB_APP_URL);
+        const modalManager = new ModalManager();
+        const formManager = new TaskFormManager();
+        const historyRenderer = new HistoryRenderer('taskHistory');
+
+        // ============================================
+        // NOTIFICATION SYSTEM
+        // ============================================
+        function showNotification(type, title, text, options = {}) {
+            return new Promise((resolve) => {
+                const overlay = document.getElementById('notifOverlay');
+                const modal = document.getElementById('notifModal');
+                const icon = document.getElementById('notifIcon');
+                const titleEl = document.getElementById('notifTitle');
+                const textEl = document.getElementById('notifText');
+                const actionsEl = document.getElementById('notifActions');
+
+                // Set icon based on type
+                const icons = {
+                    success: '✓',
+                    error: '✕',
+                    warning: '⚠'
+                };
+
+                icon.textContent = icons[type] || '✓';
+                icon.className = `notif-icon ${type}`;
+                titleEl.textContent = title;
+                textEl.textContent = text;
+
+                // Handle buttons
+                if (options.showCancelButton) {
+                    actionsEl.innerHTML = `
+                        <button class="notif-btn secondary" onclick="closeNotification(false)">${options.cancelButtonText || 'Cancel'}</button>
+                        <button class="notif-btn" onclick="closeNotification(true)">${options.confirmButtonText || 'Confirm'}</button>
+                    `;
+                } else {
+                    actionsEl.innerHTML = `
+                        <button class="notif-btn" onclick="closeNotification(true)">Got it</button>
+                    `;
+                }
+
+                // Store resolve function
+                window._notifResolve = resolve;
+
+                // Show notification
+                overlay.classList.add('show');
+
+                // Auto-close if timer is set
+                if (options.timer) {
+                    setTimeout(() => {
+                        closeNotification(true);
+                    }, options.timer);
+                }
+            });
+        }
+
+        function closeNotification(confirmed = true) {
+            const overlay = document.getElementById('notifOverlay');
+            overlay.classList.remove('show');
+
+            if (window._notifResolve) {
+                window._notifResolve({ isConfirmed: confirmed });
+                window._notifResolve = null;
+            }
+        }
+
+        // ============================================
+        // MODAL FUNCTIONS
+        // ============================================
+        function openModal() {
+            modalManager.open('create');
+        }
+
+        function closeModal() {
+            modalManager.close();
+        }
+
+        // ============================================
+        // TASK OPERATIONS
+        // ============================================
+        async function sendTestTask() {
+            try {
+                // Validate form
+                formManager.validateForm();
+                
+                const taskData = formManager.getFormData();
+                const mode = modalManager.getMode();
+                
+                // Disable button during submission
+                const saveButton = document.getElementById('mSave');
+                saveButton.disabled = true;
+                saveButton.textContent = mode === 'edit' ? 'Updating...' : 'Creating...';
+
+                if (mode === 'edit') {
+                    // Edit existing task
+                    const taskId = modalManager.getCurrentTaskId();
+                    const existingTask = historyManager.getTask(taskId);
+                    
+                    if (!existingTask) {
+                        throw new Error('Task not found');
+                    }
+
+                    // Add originalAssignedTo for cross-channel detection
+                    const taskDataWithOriginal = {
+                        ...taskData,
+                        originalAssignedTo: existingTask.assignedTo
+                    };
+
+                    // Update in backend (Discord)
+                    const result = await backendClient.updateTask(taskDataWithOriginal, existingTask.messageId);
+                    
+                    // Update in local storage
+                    historyManager.updateTask(taskId, taskData, result.messageId);
+                    
+                    await showNotification('success', 'Task Updated!', 'Your task has been updated successfully.');
+                } else {
+                    // Create new task
+                    const result = await backendClient.createTask(taskData);
+                    
+                    // Save to local storage
+                    historyManager.addTask(taskData, result.messageId);
+                    
+                    await showNotification('success', 'Task Created!', 'Your task has been posted to Discord.');
+                }
+
+                // Close modal and refresh display
+                closeModal();
+                refreshHistoryDisplay();
+                
+            } catch (error) {
+                console.error('Error:', error);
+                await showNotification('error', 'Error', error.message || 'An error occurred while processing your request.');
+            } finally {
+                // Re-enable button
+                const saveButton = document.getElementById('mSave');
+                saveButton.disabled = false;
+                const mode = modalManager.getMode();
+                saveButton.textContent = mode === 'edit' ? '✓ Update Task' : '✦ Create Task';
+            }
+        }
+
+        async function handleTaskEdit(taskId) {
+            const task = historyManager.getTask(taskId);
+            
+            if (!task) {
+                await showNotification('error', 'Error', 'Task not found');
+                return;
+            }
+
+            modalManager.open('edit', task);
+        }
+
+        async function handleTaskDelete(taskId) {
+            const task = historyManager.getTask(taskId);
+            
+            if (!task) {
+                await showNotification('error', 'Error', 'Task not found');
+                return;
+            }
+
+            const result = await showNotification('warning', 'Delete Task?', 'This will remove the task from your local history.', {
+                showCancelButton: true,
+                confirmButtonText: 'Yes, delete it',
+                cancelButtonText: 'Cancel'
+            });
+
+            if (result.isConfirmed) {
+                try {
+                    // Delete from local storage only (fast)
+                    historyManager.deleteTask(taskId);
+                    
+                    // Refresh display from localStorage (fast)
+                    const localTasks = historyManager.getAllTasks();
+                    historyRenderer.renderTasks(localTasks);
+                    updateTaskCount(localTasks.length);
+                    updateQuickStats(localTasks);
+                    
+                    await showNotification('success', 'Deleted!', 'Task has been removed from your history.', { timer: 1500 });
+                } catch (error) {
+                    console.error('Error deleting task:', error);
+                    await showNotification('error', 'Error', error.message || 'Failed to delete task.');
+                }
+            }
+        }
+
+        async function refreshHistoryDisplay() {
+            // Show loading state
+            historyRenderer.renderLoading();
+            
+            try {
+                // Try to fetch from Dashboard first
+                const dashboardData = await dashboardClient.fetchDashboardData();
+                
+                // Display Dashboard data
+                historyRenderer.renderTasks(dashboardData);
+                updateTaskCount(dashboardData.length);
+                updateQuickStats(dashboardData);
+                
+            } catch (error) {
+                console.error('Error fetching Dashboard data:', error);
+                
+                // Fallback to localStorage
+                const tasks = historyManager.getAllTasks();
+                historyRenderer.renderTasks(tasks);
+                updateTaskCount(tasks.length);
+                updateQuickStats(tasks);
+            }
+        }
+
+        function updateTaskCount(count) {
+            const taskCountEl = document.getElementById('taskCount');
+            taskCountEl.textContent = `${count} task${count !== 1 ? 's' : ''}`;
+        }
+
+        function updateQuickStats(tasks) {
+            const stats = {
+                total: tasks.length,
+                high: tasks.filter(t => t.priority === 'High').length,
+                medium: tasks.filter(t => t.priority === 'Medium').length,
+                low: tasks.filter(t => t.priority === 'Low').length,
+                inProgress: 0, // Can be extended with status tracking
+                done: 0 // Can be extended with status tracking
+            };
+
+            document.getElementById('qsTotal').textContent = stats.total;
+            document.getElementById('qsHigh').textContent = stats.high;
+            document.getElementById('qsMed').textContent = stats.medium;
+            document.getElementById('qsLow').textContent = stats.low;
+            document.getElementById('qsInProgress').textContent = stats.inProgress;
+            document.getElementById('qsDone').textContent = stats.done;
+        }
+
+        // ============================================
+        // INITIALIZATION
+        // ============================================
+        document.addEventListener('DOMContentLoaded', function() {
+            console.log('Task Manager initialized');
+            refreshHistoryDisplay();
+            
+            // Close modal on overlay click
+            document.getElementById('overlay').addEventListener('click', function(e) {
+                if (e.target === this) {
+                    closeModal();
+                }
+            });
+
+            // Close modal on Escape key
+            document.addEventListener('keydown', function(e) {
+                if (e.key === 'Escape' && modalManager.overlay.classList.contains('open')) {
+                    closeModal();
+                }
+            });
+        });
+    </script>
+
+</body>
+</html>
