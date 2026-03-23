@@ -1,0 +1,61 @@
+[
+  {
+    "name": "First Server",
+    "channels": [
+      {
+        "name": "jimbert",
+        "url": "https://discord.com/api/webhooks/1485534367181963435/ReWC_u0pEJJjnTNwPujTNx8dOeIrpTulMIkjOViokRoG6KoLrDuNWGaiBJeEd1i3ZLxB"
+      }
+    ]
+  },
+  {
+    "name": "Upgrades Test Server",
+    "channels": [
+      {
+        "name": "Marketing Team",
+        "url": "https://discord.com/api/webhooks/1478939432877953075/_GFAVwpHsBi0ZhEEt6WhWbpADnqFbcsZnD_G8-6KIgByFwVXfFiMNrzrltSTXmSKUNAZ"
+      },
+      {
+        "name": "Creatives Team",
+        "url": "https://discord.com/api/webhooks/1478939317089992774/gD6VNGz681WvUKaTLX5fbw3ezpPNOfhSAqpak2NTMjUGlcRKQKsLVZezNjH8pou-3ZwB"
+      },
+      {
+        "name": "Development Team",
+        "url": "https://discord.com/api/webhooks/1478939136843976867/apD-irw83UBmMiY7BKEAt-yQv-n4J9YEQIlIDLc2TNzes7YwQhDBJV6hufPbCqFw5aL5"
+      },
+      {
+        "name": "Operation Team",
+        "url": "https://discord.com/api/webhooks/1478938777446780999/g1YxYi8DBRtkmAxnA3DRQtL4Q6_MB12P7PX7zRuLTeyXTqljhPWiBpg3Xje2UDpHtdua"
+      },
+      {
+        "name": "Everyone",
+        "url": "https://discord.com/api/webhooks/1478251992638816338/RuTlBfnWd9vV4KECdfEu22L045mSA_-mQi6pqIh7pAKVUSGoDI_moPLJjMq1eb4z978j"
+      }
+    ]
+  },
+  {
+    "name": "Upgrades Main Server OJT",
+    "channels": [
+      {
+        "name": "Marketing Team",
+        "url": "https://discord.com/api/webhooks/1479301728124801066/adBz_TGLc9ljmCH1PKgOTKY2TdgMZn_G170dbKNlKw6DmkUYLI4ElWKe9LyEpQsj5Qz3"
+      },
+      {
+        "name": "Creatives Team",
+        "url": "https://discord.com/api/webhooks/1479302280040808612/sN9AnQ-z_KZ_SiI4vO-UjDYxWnpKzfV5mW6KBklgDKIwK2SqpHtrj82WaMzG2SMjmAt2"
+      },
+      {
+        "name": "Development Team",
+        "url": "https://discord.com/api/webhooks/1479302455127834746/jgY8gcwLAIbCgmQnnZvGT8qjA2uOhQ-s-xzvjwSY7hl7rHoxSAJjAYJvS01b_XecWBm5"
+      },
+      {
+        "name": "Operation Team",
+        "url": "https://discord.com/api/webhooks/1479302616130261085/NVDalJpTsxeoKKlKuvesdSNxD0OdIzROZkah8ffMezaHk8Z9ZbO8bORk_471grnycdDi"
+      },
+      {
+        "name": "Everyone",
+        "url": "https://discord.com/api/webhooks/1479302766617821439/x6Mf-H3vqHG3U5KkJo1WAxrZDiQrI5vQPqSzCXG1AIl2enm1Js1Qvgl5QOv7LAlfyc80"
+      }
+    ]
+  }
+]
