@@ -1408,3 +1408,9 @@ body {
 #presetNameOverlay {
     z-index: 500;
 }
+
+#webhookList {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
