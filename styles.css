@@ -1262,3 +1262,88 @@ body {
     border-color: var(--danger);
     transform: translateY(-1px);
 }
+
+/* ── Dynamic Webhook List ─────────────────────────────────── */
+.admin-section-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding-bottom: 6px;
+    border-bottom: 1.5px solid var(--border);
+}
+
+.admin-section-header .admin-section-title {
+    border-bottom: none;
+    padding-bottom: 0;
+    margin: 0;
+}
+
+.btn-add-webhook {
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--accent);
+    background: var(--accent-light, rgba(108,99,255,0.1));
+    border: 1px solid var(--accent);
+    border-radius: 8px;
+    padding: 4px 12px;
+    cursor: pointer;
+    transition: background 0.15s;
+}
+
+.btn-add-webhook:hover {
+    background: var(--accent);
+    color: #fff;
+}
+
+.webhook-empty {
+    font-size: 13px;
+    color: var(--text-sub);
+    text-align: center;
+    padding: 12px 0;
+}
+
+.webhook-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.webhook-row-fields {
+    display: flex;
+    flex: 1;
+    gap: 8px;
+}
+
+.webhook-name-input {
+    flex: 0 0 38%;
+}
+
+.webhook-url-input {
+    flex: 1;
+}
+
+.btn-del-webhook {
+    background: transparent;
+    border: none;
+    cursor: pointer;
+    font-size: 16px;
+    padding: 4px 6px;
+    border-radius: 6px;
+    transition: background 0.15s;
+    flex-shrink: 0;
+}
+
+.btn-del-webhook:hover {
+    background: var(--danger-light, rgba(255,80,80,0.12));
+}
+
+@media (max-width: 600px) {
+    .webhook-row-fields {
+        flex-direction: column;
+    }
+    .webhook-name-input,
+    .webhook-url-input {
+        flex: unset;
+        width: 100%;
+    }
+}

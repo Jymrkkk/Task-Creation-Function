@@ -510,156 +510,37 @@ function doPost(e) {
     
     Logger.log("[doPost] Processing task: " + requestData.taskName + ", assignedTo: " + requestData.assignedTo);
     Logger.log("[doPost] Request messageId: " + requestData.messageId);
-    Logger.log("[doPost] Request originalAssignedTo: " + requestData.originalAssignedTo);
-    
-    // Determine routing strategy
-    const routing = determineRouting(requestData);
-    Logger.log("[doPost] Routing decision: strategy=" + routing.strategy + ", targetTeams=" + routing.targetTeams.join(","));
-    
-    // Validate webhook configuration for target teams
-    const validationErrors = [];
-    routing.targetTeams.forEach(function(team) {
-      const validation = validateWebhookConfig(team);
-      if (!validation.valid) {
-        validationErrors.push(validation.error);
-      }
-    });
-    
-    // If any validation errors, return configuration error
-    if (validationErrors.length > 0) {
-      Logger.log("[doPost] Configuration validation failed: " + validationErrors.join("; "));
-      return createErrorResponse("Configuration error", validationErrors.join("; "));
+
+    // Use webhookUrl from payload (new dynamic system) or fall back to Script Properties
+    const webhookUrl = requestData.webhookUrl || getWebhookUrl(requestData.assignedTo);
+
+    if (!webhookUrl) {
+      return createErrorResponse("Configuration error", "No webhook URL configured for: " + requestData.assignedTo);
     }
-    
-    // Handle routing based on strategy
+
+    const embed = createDiscordEmbed(requestData);
     let discordResponse;
-    
-    if (routing.strategy === "single") {
-      // Single channel routing (new task or same-channel update)
-      const targetTeam = routing.targetTeams[0];
-      const webhookUrl = getWebhookUrl(targetTeam);
-      
-      // Create embed (no cross-channel options needed)
-      const embed = createDiscordEmbed(requestData);
-      
-      if (routing.isUpdate && !routing.requiresNewMessage) {
-        // Update existing message in same channel
-        Logger.log("[doPost] Updating existing message in " + targetTeam);
+
+    if (requestData.messageId && !Array.isArray(requestData.messageId)) {
+      // Update existing single message
+      try {
         discordResponse = updateDiscordMessage(webhookUrl, requestData.messageId, embed);
-      } else {
-        // Create new message
-        Logger.log("[doPost] Creating new message in " + targetTeam);
+      } catch (updateErr) {
+        // If message not found, post a new one
+        Logger.log("[doPost] Update failed, posting new: " + updateErr.toString());
         discordResponse = sendToDiscord(webhookUrl, embed);
       }
-      
-    } else if (routing.strategy === "broadcast") {
-      // Broadcast to all channels
-      const webhookUrls = routing.targetTeams.map(function(team) {
-        return getWebhookUrl(team);
-      });
-      
-      // Create embed (no cross-channel options needed for broadcast)
-      const embed = createDiscordEmbed(requestData);
-      
-      if (routing.isUpdate && !routing.requiresNewMessage) {
-        // Update existing messages in all channels
-        Logger.log("[doPost] Updating broadcast messages in " + routing.targetTeams.length + " channels");
-        
-        // Build updates array with webhookUrl and messageId pairs
-        const updates = routing.targetTeams.map(function(team, index) {
-          return {
-            webhookUrl: getWebhookUrl(team),
-            messageId: requestData.messageId[index]
-          };
-        });
-        
-        const result = updateBroadcastMessages(updates, embed);
-        
-        // Handle partial failures
-        if (result.errors.length > 0) {
-          Logger.log("[doPost] Broadcast update completed with " + result.errors.length + " errors");
-          // Return success with errors array
-          return createBroadcastResponseWithErrors(result.messageIds, result.errors);
-        }
-        
-        discordResponse = { messageId: result.messageIds };
-        
-      } else {
-        // Create new messages in all channels
-        Logger.log("[doPost] Broadcasting new message to " + routing.targetTeams.length + " channels");
-        
-        const result = broadcastToDiscord(webhookUrls, embed);
-        
-        // Handle partial failures
-        if (result.errors.length > 0) {
-          Logger.log("[doPost] Broadcast completed with " + result.errors.length + " errors");
-          // Return success with errors array
-          return createBroadcastResponseWithErrors(result.messageIds, result.errors);
-        }
-        
-        discordResponse = { messageId: result.messageIds };
-      }
-      
-    } else if (routing.strategy === "cross-channel") {
-      // Cross-channel update: create new message in new channel
-      const targetTeam = routing.targetTeams[0];
-      const webhookUrl = getWebhookUrl(targetTeam);
-      
-      Logger.log("[doPost] Cross-channel update: creating new message in " + targetTeam);
-      if (routing.originalTeam) {
-        Logger.log("[doPost] Original team: " + routing.originalTeam);
-      }
-      
-      // Create embed with cross-channel indicator
-      const embedOptions = {
-        isCrossChannel: true,
-        originalTeam: routing.originalTeam
-      };
-      const embed = createDiscordEmbed(requestData, embedOptions);
-      
-      // For cross-channel from Everyone to specific team, broadcast to all
-      if (routing.targetTeams.length > 1) {
-        // This is cross-channel from specific team to Everyone
-        const webhookUrls = routing.targetTeams.map(function(team) {
-          return getWebhookUrl(team);
-        });
-        
-        const result = broadcastToDiscord(webhookUrls, embed);
-        
-        // Handle partial failures
-        if (result.errors.length > 0) {
-          Logger.log("[doPost] Cross-channel broadcast completed with " + result.errors.length + " errors");
-          return createBroadcastResponseWithErrors(result.messageIds, result.errors);
-        }
-        
-        discordResponse = { messageId: result.messageIds };
-      } else {
-        // Single channel cross-channel update
-        discordResponse = sendToDiscord(webhookUrl, embed);
-      }
+    } else {
+      // New message
+      discordResponse = sendToDiscord(webhookUrl, embed);
     }
     
     // Save to Google Sheets
     try {
-      Logger.log("[doPost] Saving task to Google Sheets");
-      
-      // For cross-channel updates, pass the old messageId for searching
-      const oldMessageId = (routing.strategy === "cross-channel" && requestData.messageId) 
-        ? requestData.messageId 
-        : null;
-      
-      Logger.log("[doPost] Routing strategy: " + routing.strategy);
-      Logger.log("[doPost] Old messageId for search: " + oldMessageId);
-      Logger.log("[doPost] New messageId to save: " + discordResponse.messageId);
-      
-      const saved = saveTaskToSheet(requestData, discordResponse.messageId, oldMessageId);
-      if (saved) {
-        Logger.log("[doPost] Task saved to Google Sheets successfully");
-      } else {
-        Logger.log("[doPost] Warning: Failed to save task to Google Sheets");
-      }
+      Logger.log("[doPost] Saving task to Google Sheets, new messageId: " + discordResponse.messageId);
+      const saved = saveTaskToSheet(requestData, discordResponse.messageId, null);
+      Logger.log("[doPost] Sheet save: " + (saved ? "success" : "failed"));
     } catch (sheetError) {
-      // Don't fail the whole request if Sheets save fails
       Logger.log("[doPost] Warning: Error saving to Sheets: " + sheetError.toString());
     }
     
@@ -790,16 +671,13 @@ function handleCompleteTask(requestData) {
       content: body
     };
 
-    // Send to the relevant webhook(s)
-    const routing = determineRouting({ assignedTo: requestData.assignedTo, messageId: null });
-    routing.targetTeams.forEach(function(team) {
-      const webhookUrl = getWebhookUrl(team);
-      if (webhookUrl) {
-        try { sendToDiscord(webhookUrl, embed); } catch(e) {
-          Logger.log("[handleCompleteTask] Failed to notify " + team + ": " + e.toString());
-        }
+    // Send to the relevant webhook — use payload webhookUrl or fall back to Script Properties
+    const webhookUrl = requestData.webhookUrl || getWebhookUrl(requestData.assignedTo);
+    if (webhookUrl) {
+      try { sendToDiscord(webhookUrl, embed); } catch(e) {
+        Logger.log("[handleCompleteTask] Failed to notify: " + e.toString());
       }
-    });
+    }
 
     return createSuccessResponse(requestData.messageId);
   } catch (error) {
