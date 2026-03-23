@@ -528,6 +528,8 @@ body {
     position: relative;
     transition: box-shadow 0.22s, transform 0.18s, border-color 0.2s;
     animation: slideUp 0.34s cubic-bezier(.22, .8, .42, 1) both;
+    min-width: 0;
+    overflow: hidden;
 }
 
 .task-card::before {
@@ -578,6 +580,14 @@ body {
     color: var(--text-sub);
     line-height: 1.5;
     margin-bottom: 12px;
+    word-break: break-word;
+    overflow-wrap: anywhere;
+    white-space: normal;
+}
+
+.tc-name {
+    word-break: break-word;
+    overflow-wrap: anywhere;
 }
 
 .tc-meta {
