@@ -51,7 +51,7 @@ Since channel configs are saved to your browser's localStorage, they won't carry
 A sample preset file is included in the `presets/` folder:
 
 ```
-presets/task-manager-presets.json
+presets/READY-PRESETS.json
 ```
 
 > ⚠️ The webhook URLs in this file are examples — replace them with your own before using.
