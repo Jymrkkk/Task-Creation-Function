@@ -762,8 +762,7 @@ function handleCompleteTask(requestData) {
       if (rowFound > 0) {
         const statusCell = sheet.getRange(rowFound, 7);
         // Clear any data validation that might block the value
-        statusCell.clearDataValidations();
-        statusCell.setValue("Done");
+        statusCell.setValue("Completed");
         Logger.log("[handleCompleteTask] Successfully set row " + rowFound + " status to Done");
       } else {
         Logger.log("[handleCompleteTask] WARNING: Could not find row to update. messageId=" + searchIdStr + ", taskName=" + requestData.taskName);
@@ -783,7 +782,7 @@ function handleCompleteTask(requestData) {
       "",
       "👤 **Requested By:** " + requestData.user,
       "👥 **Assigned To:** " + requestData.assignedTo,
-      "📊 **Status:** Done" + completionNote
+      "📊 **Status:** Completed" + completionNote
     ].join("\n");
 
     const embed = {

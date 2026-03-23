@@ -668,7 +668,7 @@
                 const timestamp  = task.timestamp  || task['Timestamp']   || '';
                 const id         = task.id         || task['messageId']   || '';
                 const status     = task.status     || task['Status']      || 'In Progress';
-                const isDone     = status === 'Done';
+                const isDone     = status === 'Completed' || status === 'Done';
 
                 const priorityClass = `p-${priority.toLowerCase()}`;
                 const date = timestamp ? new Date(timestamp).toLocaleString('en-US', {
@@ -677,11 +677,11 @@
                 }) : '';
 
                 const statusBadge = isDone
-                    ? `<span class="s-badge s-done">✅ Done</span>`
+                    ? `<span class="s-badge s-done">✅ Completed</span>`
                     : `<span class="s-badge s-inprogress">🔵 In Progress</span>`;
 
                 const doneBtn = isDone
-                    ? `<button class="btn-done-card" disabled>✅ Done</button>`
+                    ? `<button class="btn-done-card" disabled>✅ Completed</button>`
                     : `<button class="btn-done-card" onclick="handleTaskComplete('${id}')">✅ Mark Done</button>`;
                 
                 return `
@@ -1236,7 +1236,7 @@
             }
 
             // Always update local status and UI regardless of backend result
-            historyManager.updateTaskStatus(_completeTaskId, 'Done');
+            historyManager.updateTaskStatus(_completeTaskId, 'Completed');
             closeCompleteModal();
             const localTasks = historyManager.getAllTasks();
             historyRenderer.renderTasks(localTasks);
@@ -1328,7 +1328,7 @@
                 medium: tasks.filter(t => (t.priority || t['Priority']) === 'Medium').length,
                 low: tasks.filter(t => (t.priority || t['Priority']) === 'Low').length,
                 inProgress: tasks.filter(t => (t.status || t['Status'] || 'In Progress') === 'In Progress').length,
-                done: tasks.filter(t => (t.status || t['Status']) === 'Done').length
+                done: tasks.filter(t => { const s = t.status || t['Status']; return s === 'Completed' || s === 'Done'; }).length
             };
 
             document.getElementById('qsTotal').textContent = stats.total;
