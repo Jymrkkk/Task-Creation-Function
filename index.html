@@ -1252,9 +1252,12 @@
 
                 // Attach webhook URL(s) from saved channels
                 const channels = configStore.getChannels();
+                if (!channels.length) {
+                    throw new Error('No channels configured. Please open Admin Settings (⚙️) and add your Discord webhook channels first.');
+                }
                 const matchedChannel = channels.find(c => c.name === taskData.assignedTo);
                 if (!matchedChannel || !matchedChannel.url) {
-                    throw new Error('No webhook URL configured for "' + taskData.assignedTo + '". Please set it in Admin Settings.');
+                    throw new Error('No webhook URL set for "' + taskData.assignedTo + '". Please open Admin Settings (⚙️) and add the webhook URL for this channel.');
                 }
                 taskData.webhookUrl = matchedChannel.url;
                 
