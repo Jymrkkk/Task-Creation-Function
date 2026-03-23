@@ -218,6 +218,15 @@
                     <div id="webhookList">
                         <!-- Populated dynamically -->
                     </div>
+                    <!-- Presets -->
+                    <div class="preset-bar">
+                        <select class="form-select preset-select" id="presetSelect">
+                            <option value="">— No presets saved —</option>
+                        </select>
+                        <button class="btn-preset-load" onclick="adminDashboard.loadPreset()" title="Load preset">Load</button>
+                        <button class="btn-preset-save" onclick="adminDashboard.saveAsPreset()" title="Save current channels as preset">Save Preset</button>
+                        <button class="btn-preset-del" onclick="adminDashboard.deletePreset()" title="Delete selected preset">🗑️</button>
+                    </div>
                 </div>
             </div>
             <div class="admin-modal-foot">
@@ -856,6 +865,7 @@
                 // Clone channels into working rows
                 this._rows = (settings.channels || []).map(c => ({ name: c.name, url: c.url }));
                 this._renderWebhookList();
+                this._renderPresetList();
 
                 document.getElementById('adminOverlay').classList.add('open');
             }
@@ -949,7 +959,7 @@
             }
 
             async resetToDefaults() {
-                const result = await showNotification('warning', 'Reset to Defaults?', 'This will clear all saved settings.', {
+                const result = await showNotification('warning', 'Reset to Defaults?', 'This will clear all saved settings and channels.', {
                     showCancelButton: true,
                     confirmButtonText: 'Yes, reset',
                     cancelButtonText: 'Cancel'
@@ -963,7 +973,67 @@
                 document.getElementById('adminWebAppUrl').value = '';
                 document.getElementById('adminSpreadsheetId').value = '';
                 this._renderWebhookList();
+                this._renderPresetList();
                 populateAssignedTo();
+
+                await showNotification('success', 'Reset Done', 'All settings have been cleared.', { timer: 2500 });
+                this.close();
+            }
+
+            // ── Preset management ──────────────────────────────
+            _getPresets() {
+                try {
+                    const raw = localStorage.getItem('adminConfig.presets');
+                    return raw ? JSON.parse(raw) : [];
+                } catch(e) { return []; }
+            }
+
+            _savePresets(presets) {
+                localStorage.setItem('adminConfig.presets', JSON.stringify(presets));
+            }
+
+            _renderPresetList() {
+                const select = document.getElementById('presetSelect');
+                if (!select) return;
+                const presets = this._getPresets();
+                select.innerHTML = presets.length
+                    ? `<option value="">— Load a preset —</option>` + presets.map((p, i) =>
+                        `<option value="${i}">${p.name}</option>`).join('')
+                    : `<option value="">— No presets saved —</option>`;
+            }
+
+            saveAsPreset() {
+                const name = prompt('Enter a name for this preset (e.g. "My Server"):');
+                if (!name || !name.trim()) return;
+                const presets = this._getPresets();
+                const channels = this._rows.filter(r => r.name.trim() !== '');
+                presets.push({ name: name.trim(), channels });
+                this._savePresets(presets);
+                this._renderPresetList();
+                showNotification('success', 'Preset Saved', `"${name.trim()}" saved with ${channels.length} channel(s).`, { timer: 2000 });
+            }
+
+            loadPreset() {
+                const select = document.getElementById('presetSelect');
+                if (!select || select.value === '') return;
+                const presets = this._getPresets();
+                const preset = presets[parseInt(select.value)];
+                if (!preset) return;
+                this._rows = preset.channels.map(c => ({ name: c.name, url: c.url }));
+                this._renderWebhookList();
+                select.value = '';
+            }
+
+            deletePreset() {
+                const select = document.getElementById('presetSelect');
+                if (!select || select.value === '') return;
+                const presets = this._getPresets();
+                const idx = parseInt(select.value);
+                const name = presets[idx].name;
+                presets.splice(idx, 1);
+                this._savePresets(presets);
+                this._renderPresetList();
+                showNotification('success', 'Preset Deleted', `"${name}" removed.`, { timer: 1500 });
             }
 
             _showFieldError(fieldId, message, isWarning = false) {

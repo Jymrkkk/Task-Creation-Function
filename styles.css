@@ -1347,3 +1347,59 @@ body {
         width: 100%;
     }
 }
+
+/* ── Preset Bar ───────────────────────────────────────────── */
+.preset-bar {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-top: 4px;
+    padding-top: 10px;
+    border-top: 1px dashed var(--border);
+}
+
+.preset-select {
+    flex: 1;
+    font-size: 12px;
+    padding: 6px 10px;
+}
+
+.btn-preset-load,
+.btn-preset-save {
+    font-size: 12px;
+    font-weight: 600;
+    padding: 6px 12px;
+    border-radius: 8px;
+    cursor: pointer;
+    border: 1px solid var(--border);
+    white-space: nowrap;
+    transition: background 0.15s;
+}
+
+.btn-preset-load {
+    background: var(--accent-light, rgba(108,99,255,0.1));
+    color: var(--accent);
+    border-color: var(--accent);
+}
+
+.btn-preset-load:hover { background: var(--accent); color: #fff; }
+
+.btn-preset-save {
+    background: var(--success-light, rgba(34,197,94,0.1));
+    color: var(--success);
+    border-color: var(--success);
+}
+
+.btn-preset-save:hover { background: var(--success); color: #fff; }
+
+.btn-preset-del {
+    background: transparent;
+    border: none;
+    font-size: 16px;
+    cursor: pointer;
+    padding: 4px 6px;
+    border-radius: 6px;
+    transition: background 0.15s;
+}
+
+.btn-preset-del:hover { background: var(--danger-light, rgba(255,80,80,0.12)); }
