@@ -228,9 +228,9 @@
                         <button class="btn-preset-del" onclick="adminDashboard.deletePreset()" title="Delete selected preset">🗑️</button>
                     </div>
                     <div class="preset-io-bar">
-                        <button class="btn-preset-export" onclick="adminDashboard.exportPresets()" title="Download presets as JSON file">⬇️ Export Presets</button>
-                        <label class="btn-preset-import" title="Load presets from JSON file">
-                            ⬆️ Import Presets
+                        <button class="btn-preset-export" onclick="adminDashboard.exportPresets()">↓ Export Presets</button>
+                        <label class="btn-preset-import">
+                            ↑ Import Presets
                             <input type="file" accept=".json" style="display:none" onchange="adminDashboard.importPresets(this)">
                         </label>
                     </div>
