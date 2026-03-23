@@ -1403,3 +1403,8 @@ body {
 }
 
 .btn-preset-del:hover { background: var(--danger-light, rgba(255,80,80,0.12)); }
+
+/* Preset name modal — must sit above admin overlay (z-index 400) */
+#presetNameOverlay {
+    z-index: 500;
+}
