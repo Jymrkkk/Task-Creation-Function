@@ -1331,19 +1331,37 @@ body {
     flex: 1;
 }
 
-.btn-del-webhook {
+.webhook-row-actions {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    flex-shrink: 0;
+}
+
+.btn-del-webhook,
+.btn-test-webhook {
     background: transparent;
     border: none;
     cursor: pointer;
-    font-size: 16px;
-    padding: 4px 6px;
+    font-size: 13px;
+    padding: 4px 7px;
     border-radius: 6px;
     transition: background 0.15s;
     flex-shrink: 0;
+    white-space: nowrap;
 }
 
 .btn-del-webhook:hover {
     background: var(--danger-light, rgba(255,80,80,0.12));
+}
+
+.btn-test-webhook {
+    color: var(--accent, #7c3aed);
+    font-size: 12px;
+}
+
+.btn-test-webhook:hover {
+    background: rgba(124,58,237,0.1);
 }
 
 @media (max-width: 600px) {

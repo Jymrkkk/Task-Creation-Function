@@ -916,7 +916,10 @@
                             <input class="form-input webhook-url-input" type="text" placeholder="https://discord.com/api/webhooks/..."
                                 value="${this._escHtml(row.url)}" oninput="adminDashboard._updateRow(${i},'url',this.value)">
                         </div>
-                        <button class="btn-del-webhook" onclick="adminDashboard.deleteWebhookRow(${i})" title="Remove">🗑️</button>
+                        <div class="webhook-row-actions">
+                            <button class="btn-test-webhook" onclick="adminDashboard.testWebhookRow(${i})" title="Send test ping to verify this webhook">🔔 Test</button>
+                            <button class="btn-del-webhook" onclick="adminDashboard.deleteWebhookRow(${i})" title="Remove">🗑️</button>
+                        </div>
                     </div>
                 `).join('');
             }
@@ -941,6 +944,39 @@
             deleteWebhookRow(index) {
                 this._rows.splice(index, 1);
                 this._renderWebhookList();
+            }
+
+            async testWebhookRow(index) {
+                const row = this._rows[index];
+                if (!row || !row.url) {
+                    showNotification('error', 'No URL', 'Enter a webhook URL first.', { timer: 2000 });
+                    return;
+                }
+                const name = row.name || `Channel ${index + 1}`;
+                const webAppUrl = document.getElementById('adminWebAppUrl').value.trim() || configStore.get(ConfigStore.KEYS.WEB_APP_URL);
+                if (!webAppUrl) {
+                    showNotification('error', 'No Web App URL', 'Save your Web App URL first.', { timer: 2500 });
+                    return;
+                }
+                try {
+                    const payload = {
+                        taskName: `🔔 Test ping for: ${name}`,
+                        description: 'This is a test message to verify the webhook is correctly mapped.',
+                        priority: 'Low',
+                        user: 'Admin',
+                        assignedTo: name,
+                        webhookUrls: [{ name, url: row.url }]
+                    };
+                    const resp = await fetch(webAppUrl, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(payload)
+                    });
+                    showNotification('success', 'Test Sent!', `Ping sent to "${name}". Check that Discord channel to verify.`, { timer: 3000 });
+                } catch (e) {
+                    // CORS errors are expected — GAS still processes it
+                    showNotification('success', 'Test Sent!', `Ping sent to "${name}". Check that Discord channel to verify.`, { timer: 3000 });
+                }
             }
 
             async save() {
