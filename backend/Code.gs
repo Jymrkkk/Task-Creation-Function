@@ -728,34 +728,35 @@ function handleCompleteTask(requestData) {
       const searchId = Array.isArray(requestData.messageId) ? requestData.messageId[0] : requestData.messageId;
       const searchIdStr = String(searchId).replace(/^'/, '').trim();
 
-      Logger.log("[handleCompleteTask] Searching for messageId: '" + searchIdStr + "'");
-      Logger.log("[handleCompleteTask] Total rows to search: " + (values.length - 1));
+      Logger.log("[handleCompleteTask] Searching for taskName='" + requestData.taskName + "' messageId='" + searchIdStr + "'");
 
       let rowFound = -1;
 
-      // Primary: search by messageId
+      // Search all rows — prefer messageId match, fall back to task name
+      // Also track last task-name match in case messageId is empty
+      let taskNameMatch = -1;
       for (let i = 1; i < values.length; i++) {
         const rawVal = String(values[i][7]);
         const rowMsgId = rawVal.replace(/^'/, '').trim();
-        Logger.log("[handleCompleteTask] Row " + (i+1) + " msgId raw='" + rawVal + "' cleaned='" + rowMsgId + "'");
-        if (rowMsgId === searchIdStr || rowMsgId.includes(searchIdStr) || searchIdStr.includes(rowMsgId)) {
+        const rowTaskName = String(values[i][1]).trim();
+
+        // MessageId match (strongest)
+        if (searchIdStr && rowMsgId && rowMsgId === searchIdStr) {
           rowFound = i + 1;
           Logger.log("[handleCompleteTask] Found by messageId at row " + rowFound);
           break;
         }
+
+        // Task name match (keep the LAST match so we get the most recent row)
+        if (requestData.taskName && rowTaskName === requestData.taskName.trim()) {
+          taskNameMatch = i + 1;
+        }
       }
 
-      // Fallback: search by task name
-      if (rowFound === -1 && requestData.taskName) {
-        Logger.log("[handleCompleteTask] MessageId not found, trying task name fallback: " + requestData.taskName);
-        for (let i = 1; i < values.length; i++) {
-          const rowTaskName = String(values[i][1]).trim();
-          if (rowTaskName === requestData.taskName.trim()) {
-            rowFound = i + 1;
-            Logger.log("[handleCompleteTask] Found by task name at row " + rowFound);
-            break;
-          }
-        }
+      // Use task name match if messageId search failed
+      if (rowFound === -1 && taskNameMatch !== -1) {
+        rowFound = taskNameMatch;
+        Logger.log("[handleCompleteTask] Found by task name at row " + rowFound);
       }
 
       if (rowFound > 0) {
