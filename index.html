@@ -227,6 +227,13 @@
                         <button class="btn-preset-save" onclick="adminDashboard.saveAsPreset()" title="Save current channels as preset">Save Preset</button>
                         <button class="btn-preset-del" onclick="adminDashboard.deletePreset()" title="Delete selected preset">🗑️</button>
                     </div>
+                    <div class="preset-io-bar">
+                        <button class="btn-preset-export" onclick="adminDashboard.exportPresets()" title="Download presets as JSON file">⬇️ Export Presets</button>
+                        <label class="btn-preset-import" title="Load presets from JSON file">
+                            ⬆️ Import Presets
+                            <input type="file" accept=".json" style="display:none" onchange="adminDashboard.importPresets(this)">
+                        </label>
+                    </div>
                 </div>
             </div>
             <div class="admin-modal-foot">
@@ -1069,7 +1076,51 @@
                 showNotification('success', 'Preset Deleted', `"${name}" removed.`, { timer: 1500 });
             }
 
-            _showFieldError(fieldId, message, isWarning = false) {
+            exportPresets() {
+                const presets = this._getPresets();
+                if (!presets.length) {
+                    showNotification('error', 'No Presets', 'Save at least one preset before exporting.', { timer: 2500 });
+                    return;
+                }
+                const blob = new Blob([JSON.stringify(presets, null, 2)], { type: 'application/json' });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = 'task-manager-presets.json';
+                a.click();
+                URL.revokeObjectURL(url);
+            }
+
+            importPresets(input) {
+                const file = input.files[0];
+                if (!file) return;
+                const reader = new FileReader();
+                reader.onload = (e) => {
+                    try {
+                        const data = JSON.parse(e.target.result);
+                        if (!Array.isArray(data)) throw new Error('Invalid format');
+                        // Merge with existing presets (avoid duplicates by name)
+                        const existing = this._getPresets();
+                        const existingNames = new Set(existing.map(p => p.name));
+                        let added = 0;
+                        data.forEach(p => {
+                            if (p.name && Array.isArray(p.channels)) {
+                                if (!existingNames.has(p.name)) {
+                                    existing.push(p);
+                                    added++;
+                                }
+                            }
+                        });
+                        this._savePresets(existing);
+                        this._renderPresetList();
+                        showNotification('success', 'Presets Imported', `${added} preset(s) added.`, { timer: 2500 });
+                    } catch(err) {
+                        showNotification('error', 'Import Failed', 'File is not a valid presets JSON.', { timer: 3000 });
+                    }
+                    input.value = ''; // reset so same file can be re-imported
+                };
+                reader.readAsText(file);
+            }
                 const field = document.getElementById(fieldId);
                 if (!field) return;
                 const span = document.createElement('span');

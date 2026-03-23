@@ -1414,3 +1414,32 @@ body {
     flex-direction: column;
     gap: 10px;
 }
+
+/* ── Preset Export / Import bar ──────────────────────────── */
+.preset-io-bar {
+    display: flex;
+    gap: 8px;
+    margin-top: 6px;
+}
+
+.btn-preset-export,
+.btn-preset-import {
+    flex: 1;
+    text-align: center;
+    font-size: 12px;
+    font-weight: 600;
+    padding: 7px 12px;
+    border-radius: 8px;
+    cursor: pointer;
+    border: 1px solid var(--border);
+    background: var(--surface, #f5f3ff);
+    color: var(--text-sub);
+    transition: background 0.15s, color 0.15s;
+}
+
+.btn-preset-export:hover,
+.btn-preset-import:hover {
+    background: var(--accent);
+    color: #fff;
+    border-color: var(--accent);
+}
