@@ -159,6 +159,34 @@
         </div>
     </div>
 
+    <!-- COMPLETE TASK MODAL -->
+    <div class="overlay" id="completeOverlay">
+        <div class="modal">
+            <div class="modal-head" id="completeHead">
+                <div class="mh-left">
+                    <div class="mh-icon">✅</div>
+                    <h2>Mark as Done</h2>
+                    <p>Add a completion message</p>
+                </div>
+                <button class="modal-close" onclick="closeCompleteModal()">✕</button>
+            </div>
+            <div class="modal-body">
+                <div class="form-group">
+                    <label class="form-label">Task</label>
+                    <input class="form-input" id="completeTaskName" type="text" disabled>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Completion Message <span style="color:var(--text-sub);font-weight:400">(optional)</span></label>
+                    <textarea class="form-textarea" id="completeMessage" placeholder="e.g. Great work team! Thank you for completing this task 🎉"></textarea>
+                </div>
+            </div>
+            <div class="modal-foot">
+                <button class="btn-cancel" onclick="closeCompleteModal()">Cancel</button>
+                <button class="btn-msave" id="completeSave" onclick="submitCompleteTask()" style="background:var(--success)">✅ Mark as Done</button>
+            </div>
+        </div>
+    </div>
+
     <!-- ADMIN SETTINGS MODAL -->
     <div class="admin-overlay" id="adminOverlay">
         <div class="admin-modal">
@@ -343,6 +371,16 @@
                 const storage = this._getStorage();
                 return storage.tasks.find(t => t.id === taskId) || null;
             }
+
+            updateTaskStatus(taskId, status) {
+                const storage = this._getStorage();
+                const taskIndex = storage.tasks.findIndex(t => t.id === taskId);
+                if (taskIndex === -1) throw new Error('Task not found');
+                storage.tasks[taskIndex].status = status;
+                storage.tasks[taskIndex].lastModified = new Date().toISOString();
+                this._saveStorage(storage);
+                return storage.tasks[taskIndex];
+            }
         }
 
         // ============================================
@@ -451,6 +489,30 @@
                     if (error.name === 'TypeError' && error.message.includes('fetch')) {
                         throw new Error('Network failure: Unable to reach the server. Please check your connection.');
                     }
+                    throw error;
+                }
+            }
+
+            async completeTask(taskData, messageId, completionMessage) {
+                try {
+                    const payload = {
+                        ...taskData,
+                        messageId: messageId,
+                        action: 'completeTask',
+                        completionMessage: completionMessage || ''
+                    };
+                    const response = await fetch(this.webAppUrl, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+                        body: JSON.stringify(payload)
+                    });
+                    if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+                    const result = await response.json();
+                    if (!result.success) throw new Error(result.error || 'Unknown error occurred');
+                    return result;
+                } catch (error) {
+                    if (error.name === 'TypeError' && error.message.includes('fetch'))
+                        throw new Error('Network failure: Unable to reach the server. Please check your connection.');
                     throw error;
                 }
             }
@@ -603,15 +665,25 @@
                 const user       = task.user       || task['Requester']   || '';
                 const timestamp  = task.timestamp  || task['Timestamp']   || '';
                 const id         = task.id         || task['messageId']   || '';
+                const status     = task.status     || task['Status']      || 'In Progress';
+                const isDone     = status === 'Done';
 
                 const priorityClass = `p-${priority.toLowerCase()}`;
                 const date = timestamp ? new Date(timestamp).toLocaleString('en-US', {
                     year: 'numeric', month: 'long', day: 'numeric',
                     hour: 'numeric', minute: '2-digit', hour12: true
                 }) : '';
+
+                const statusBadge = isDone
+                    ? `<span class="s-badge s-done">✅ Done</span>`
+                    : `<span class="s-badge s-inprogress">🔵 In Progress</span>`;
+
+                const doneBtn = isDone
+                    ? `<button class="btn-done-card" disabled>✅ Done</button>`
+                    : `<button class="btn-done-card" onclick="handleTaskComplete('${id}')">✅ Mark Done</button>`;
                 
                 return `
-                    <div class="task-card">
+                    <div class="task-card${isDone ? ' task-done' : ''}">
                         <div class="tc-top">
                             <div class="tc-name">${this.escapeHtml(taskName)}</div>
                             <div class="p-badge ${priorityClass}">${priority}</div>
@@ -620,9 +692,11 @@
                         <div class="tc-meta">
                             <div class="tc-meta-row"><strong>Assigned:</strong> ${this.escapeHtml(assignedTo)}</div>
                             <div class="tc-meta-row"><strong>Created by:</strong> ${this.escapeHtml(user)}</div>
+                            <div class="tc-meta-row"><strong>Status:</strong> ${statusBadge}</div>
                         </div>
                         <div class="tc-date">📅 ${date}</div>
                         <div class="tc-actions">
+                            ${doneBtn}
                             <button class="btn-edit-card" onclick="handleTaskEdit('${id}')">✏️ Edit</button>
                             <button class="btn-del-card" onclick="handleTaskDelete('${id}')">🗑️ Delete</button>
                         </div>
@@ -1122,6 +1196,53 @@
             }
         }
 
+        // ============================================
+        // COMPLETE TASK
+        // ============================================
+        let _completeTaskId = null;
+
+        function handleTaskComplete(taskId) {
+            const task = historyManager.getTask(taskId);
+            if (!task) { showNotification('error', 'Error', 'Task not found'); return; }
+            _completeTaskId = taskId;
+            document.getElementById('completeTaskName').value = task.taskName;
+            document.getElementById('completeMessage').value = '';
+            document.getElementById('completeOverlay').classList.add('open');
+        }
+
+        function closeCompleteModal() {
+            document.getElementById('completeOverlay').classList.remove('open');
+            _completeTaskId = null;
+        }
+
+        async function submitCompleteTask() {
+            if (!_completeTaskId) return;
+            const task = historyManager.getTask(_completeTaskId);
+            if (!task) { showNotification('error', 'Error', 'Task not found'); return; }
+
+            const completionMessage = document.getElementById('completeMessage').value.trim();
+            const btn = document.getElementById('completeSave');
+            btn.disabled = true;
+            btn.textContent = 'Saving...';
+
+            try {
+                await backendClient.completeTask(task, task.messageId, completionMessage);
+                historyManager.updateTaskStatus(_completeTaskId, 'Done');
+                closeCompleteModal();
+                const localTasks = historyManager.getAllTasks();
+                historyRenderer.renderTasks(localTasks);
+                updateTaskCount(localTasks.length);
+                updateQuickStats(localTasks);
+                await showNotification('success', 'Task Completed!', 'The task has been marked as done and Discord has been notified.', { timer: 2000 });
+            } catch (error) {
+                console.error('Error completing task:', error);
+                await showNotification('error', 'Error', error.message || 'Failed to complete task.');
+            } finally {
+                btn.disabled = false;
+                btn.textContent = '✅ Mark as Done';
+            }
+        }
+
         async function handleTaskEdit(taskId) {
             const task = historyManager.getTask(taskId);
             
@@ -1198,11 +1319,11 @@
         function updateQuickStats(tasks) {
             const stats = {
                 total: tasks.length,
-                high: tasks.filter(t => t.priority === 'High').length,
-                medium: tasks.filter(t => t.priority === 'Medium').length,
-                low: tasks.filter(t => t.priority === 'Low').length,
-                inProgress: 0, // Can be extended with status tracking
-                done: 0 // Can be extended with status tracking
+                high: tasks.filter(t => (t.priority || t['Priority']) === 'High').length,
+                medium: tasks.filter(t => (t.priority || t['Priority']) === 'Medium').length,
+                low: tasks.filter(t => (t.priority || t['Priority']) === 'Low').length,
+                inProgress: tasks.filter(t => (t.status || t['Status'] || 'In Progress') === 'In Progress').length,
+                done: tasks.filter(t => (t.status || t['Status']) === 'Done').length
             };
 
             document.getElementById('qsTotal').textContent = stats.total;
@@ -1223,9 +1344,10 @@
             
             // Close modal on overlay click
             document.getElementById('overlay').addEventListener('click', function(e) {
-                if (e.target === this) {
-                    closeModal();
-                }
+                if (e.target === this) closeModal();
+            });
+            document.getElementById('completeOverlay').addEventListener('click', function(e) {
+                if (e.target === this) closeCompleteModal();
             });
 
             // Close modal on Escape key

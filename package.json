@@ -1,0 +1,31 @@
+{
+  "name": "test-server",
+  "version": "1.0.0",
+  "description": "A task management system that routes tasks to different Discord channels based on team assignment and automatically syncs with Google Sheets.",
+  "main": "index.js",
+  "directories": {
+    "test": "tests"
+  },
+  "scripts": {
+    "test": "vitest run",
+    "test:property": "vitest run tests/property"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Jymrkkk/Task-Creation-Function.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "module",
+  "bugs": {
+    "url": "https://github.com/Jymrkkk/Task-Creation-Function/issues"
+  },
+  "homepage": "https://github.com/Jymrkkk/Task-Creation-Function#readme",
+  "devDependencies": {
+    "@vitest/coverage-v8": "^4.1.0",
+    "fast-check": "^4.6.0",
+    "jsdom": "^29.0.1",
+    "vitest": "^4.0.18"
+  }
+}

@@ -491,6 +491,11 @@ function doPost(e) {
       Logger.log("[doPost] JSON parse error: " + parseError.toString());
       return createErrorResponse("Invalid request", "Request body must be valid JSON: " + parseError.message);
     }
+
+    // Handle completeTask action separately
+    if (requestData.action === 'completeTask') {
+      return handleCompleteTask(requestData);
+    }
     
     // Validate required fields
     if (!requestData.taskName || !requestData.user || !requestData.assignedTo) {
@@ -704,6 +709,71 @@ function doPost(e) {
     // Generic server error for all other cases
     Logger.log("[doPost] Unhandled error type: " + errorMessage);
     return createErrorResponse("Server error", "An unexpected error occurred: " + errorMessage);
+  }
+}
+
+/**
+ * Handles task completion: updates sheet status to Done and notifies Discord
+ */
+function handleCompleteTask(requestData) {
+  try {
+    Logger.log("[handleCompleteTask] Marking task as done: " + requestData.taskName);
+
+    // Update sheet status to Done
+    const spreadsheet = SpreadsheetApp.getActiveSpreadsheet();
+    const sheet = spreadsheet && spreadsheet.getSheetByName("Dashboard");
+    if (sheet) {
+      const dataRange = sheet.getDataRange();
+      const values = dataRange.getValues();
+      const searchId = Array.isArray(requestData.messageId) ? requestData.messageId[0] : requestData.messageId;
+      const searchIdStr = String(searchId).trim();
+
+      for (let i = 1; i < values.length; i++) {
+        const rowMsgId = String(values[i][7]).trim();
+        if (rowMsgId === searchIdStr || rowMsgId.includes(searchIdStr)) {
+          sheet.getRange(i + 1, 7).setValue("Done"); // Status column
+          Logger.log("[handleCompleteTask] Updated row " + (i + 1) + " status to Done");
+          break;
+        }
+      }
+    }
+
+    // Build completion Discord message
+    const completionNote = requestData.completionMessage
+      ? "\n\n💬 **Message:** " + requestData.completionMessage
+      : "";
+
+    const body = [
+      "✅ **Task Completed!**",
+      "",
+      "📝 **Task:** " + requestData.taskName,
+      "📄 **Description:** " + (requestData.description || ""),
+      "",
+      "👤 **Requested By:** " + requestData.user,
+      "👥 **Assigned To:** " + requestData.assignedTo,
+      "📊 **Status:** Done" + completionNote
+    ].join("\n");
+
+    const embed = {
+      username: "Task Bot (" + requestData.assignedTo + ")",
+      content: body
+    };
+
+    // Send to the relevant webhook(s)
+    const routing = determineRouting({ assignedTo: requestData.assignedTo, messageId: null });
+    routing.targetTeams.forEach(function(team) {
+      const webhookUrl = getWebhookUrl(team);
+      if (webhookUrl) {
+        try { sendToDiscord(webhookUrl, embed); } catch(e) {
+          Logger.log("[handleCompleteTask] Failed to notify " + team + ": " + e.toString());
+        }
+      }
+    });
+
+    return createSuccessResponse(requestData.messageId);
+  } catch (error) {
+    Logger.log("[handleCompleteTask] Error: " + error.toString());
+    return createErrorResponse("Server error", error.message);
   }
 }
 
