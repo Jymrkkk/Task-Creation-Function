@@ -236,10 +236,30 @@
         </div>
     </div>
 
-    <script>
-        // ============================================
-        // CONFIGURATION
-        // ============================================
+    <!-- PRESET NAME MODAL -->
+    <div class="overlay" id="presetNameOverlay">
+        <div class="modal" style="max-width:420px">
+            <div class="modal-head">
+                <div class="mh-left">
+                    <div class="mh-icon">💾</div>
+                    <h2>Save Preset</h2>
+                    <p>Give this set of channels a name</p>
+                </div>
+                <button class="modal-close" onclick="adminDashboard._closePresetModal()">✕</button>
+            </div>
+            <div class="modal-body">
+                <div class="form-group">
+                    <label class="form-label">Preset Name</label>
+                    <input class="form-input" id="presetNameInput" type="text" placeholder='e.g. My Server'
+                        onkeydown="if(event.key==='Enter') adminDashboard._confirmPresetName()">
+                </div>
+            </div>
+            <div class="modal-foot">
+                <button class="btn-cancel" onclick="adminDashboard._closePresetModal()">Cancel</button>
+                <button class="btn-msave" onclick="adminDashboard._confirmPresetName()">💾 Save Preset</button>
+            </div>
+        </div>
+    </div>
         const DEFAULTS = {
             WEB_APP_URL: 'https://script.google.com/macros/s/AKfycbzqhjMmprgaNMdR8ZgFS91wwRqsl65jpDXvs2HQZ1uNIhYim4wY0745CdJBdPmtrRBPrw/exec'
         };
@@ -1003,14 +1023,25 @@
             }
 
             saveAsPreset() {
-                const name = prompt('Enter a name for this preset (e.g. "My Server"):');
-                if (!name || !name.trim()) return;
+                document.getElementById('presetNameInput').value = '';
+                document.getElementById('presetNameOverlay').classList.add('open');
+                setTimeout(() => document.getElementById('presetNameInput').focus(), 50);
+            }
+
+            _closePresetModal() {
+                document.getElementById('presetNameOverlay').classList.remove('open');
+            }
+
+            _confirmPresetName() {
+                const name = document.getElementById('presetNameInput').value.trim();
+                if (!name) return;
+                this._closePresetModal();
                 const presets = this._getPresets();
                 const channels = this._rows.filter(r => r.name.trim() !== '');
-                presets.push({ name: name.trim(), channels });
+                presets.push({ name, channels });
                 this._savePresets(presets);
                 this._renderPresetList();
-                showNotification('success', 'Preset Saved', `"${name.trim()}" saved with ${channels.length} channel(s).`, { timer: 2000 });
+                showNotification('success', 'Preset Saved', `"${name}" saved with ${channels.length} channel(s).`, { timer: 2000 });
             }
 
             loadPreset() {
