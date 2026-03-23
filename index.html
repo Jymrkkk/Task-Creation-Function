@@ -20,6 +20,12 @@
     <div class="page-header">
         <div class="page-icon">✦</div>
         <h1>Task <span>Manager</span></h1>
+        <button class="btn-admin-gear" onclick="adminDashboard.open()" title="Admin Settings">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <circle cx="12" cy="12" r="3"/>
+                <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/>
+            </svg>
+        </button>
     </div>
 
     <!-- Two-Panel Layout -->
@@ -153,11 +159,78 @@
         </div>
     </div>
 
+    <!-- ADMIN SETTINGS MODAL -->
+    <div class="admin-overlay" id="adminOverlay">
+        <div class="admin-modal">
+            <div class="admin-modal-head">
+                <div class="amh-left">
+                    <div class="amh-icon">⚙</div>
+                    <div>
+                        <h2>Admin Settings</h2>
+                        <p>Configure app integrations</p>
+                    </div>
+                </div>
+                <button class="admin-modal-close" onclick="adminDashboard.close()">✕</button>
+            </div>
+            <div class="admin-modal-body">
+                <!-- Web App URL -->
+                <div class="admin-section">
+                    <h3 class="admin-section-title">Backend Configuration</h3>
+                    <div class="form-group">
+                        <label class="form-label">Web App URL</label>
+                        <input class="form-input" id="adminWebAppUrl" type="text" placeholder="https://script.google.com/macros/s/...">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Spreadsheet ID or URL</label>
+                        <input class="form-input" id="adminSpreadsheetId" type="text" placeholder="Enter spreadsheet ID or full URL">
+                    </div>
+                </div>
+                <!-- Discord Webhooks -->
+                <div class="admin-section">
+                    <h3 class="admin-section-title">Discord Webhooks</h3>
+                    <div class="form-group">
+                        <label class="form-label">Marketing Team</label>
+                        <input class="form-input" id="adminWebhook_Marketing_Team" type="text" placeholder="https://discord.com/api/webhooks/...">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Creatives Team</label>
+                        <input class="form-input" id="adminWebhook_Creatives_Team" type="text" placeholder="https://discord.com/api/webhooks/...">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Development Team</label>
+                        <input class="form-input" id="adminWebhook_Development_Team" type="text" placeholder="https://discord.com/api/webhooks/...">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Operations Team</label>
+                        <input class="form-input" id="adminWebhook_Operations_Team" type="text" placeholder="https://discord.com/api/webhooks/...">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Everyone</label>
+                        <input class="form-input" id="adminWebhook_Everyone" type="text" placeholder="https://discord.com/api/webhooks/...">
+                    </div>
+                </div>
+                <!-- Team Status Summary -->
+                <div class="admin-section">
+                    <h3 class="admin-section-title">Team Status</h3>
+                    <ul class="admin-status-list" id="adminStatusList">
+                        <!-- Populated by AdminDashboard._updateStatusSummary() -->
+                    </ul>
+                </div>
+            </div>
+            <div class="admin-modal-foot">
+                <button class="btn-admin-reset" onclick="adminDashboard.resetToDefaults()">Reset to Defaults</button>
+                <button class="btn-admin-save" onclick="adminDashboard.save()">Save Settings</button>
+            </div>
+        </div>
+    </div>
+
     <script>
         // ============================================
         // CONFIGURATION
         // ============================================
-        const WEB_APP_URL = 'https://script.google.com/macros/s/AKfycbzqhjMmprgaNMdR8ZgFS91wwRqsl65jpDXvs2HQZ1uNIhYim4wY0745CdJBdPmtrRBPrw/exec';
+        const DEFAULTS = {
+            WEB_APP_URL: 'https://script.google.com/macros/s/AKfycbzqhjMmprgaNMdR8ZgFS91wwRqsl65jpDXvs2HQZ1uNIhYim4wY0745CdJBdPmtrRBPrw/exec'
+        };
 
         // ============================================
         // TaskHistoryManager Class
@@ -522,28 +595,36 @@
             }
 
             renderTaskCard(task) {
-                const priorityClass = `p-${task.priority.toLowerCase()}`;
-                const date = new Date(task.timestamp).toLocaleString();
+                // Normalize fields — handle both localStorage shape and dashboard sheet shape
+                const taskName   = task.taskName   || task['Task Name']   || '';
+                const description = task.description || task['Description'] || '';
+                const priority   = task.priority   || task['Priority']    || 'Low';
+                const assignedTo = task.assignedTo || task['Assigned To'] || '';
+                const user       = task.user       || task['Requester']   || '';
+                const timestamp  = task.timestamp  || task['Timestamp']   || '';
+                const id         = task.id         || task['messageId']   || '';
+
+                const priorityClass = `p-${priority.toLowerCase()}`;
+                const date = timestamp ? new Date(timestamp).toLocaleString('en-US', {
+                    year: 'numeric', month: 'long', day: 'numeric',
+                    hour: 'numeric', minute: '2-digit', hour12: true
+                }) : '';
                 
                 return `
                     <div class="task-card">
                         <div class="tc-top">
-                            <div class="tc-name">${this.escapeHtml(task.taskName)}</div>
-                            <div class="p-badge ${priorityClass}">${task.priority}</div>
+                            <div class="tc-name">${this.escapeHtml(taskName)}</div>
+                            <div class="p-badge ${priorityClass}">${priority}</div>
                         </div>
-                        <div class="tc-desc">${this.escapeHtml(task.description)}</div>
+                        <div class="tc-desc">${this.escapeHtml(description)}</div>
                         <div class="tc-meta">
-                            <div class="tc-meta-row"><strong>Assigned:</strong> ${this.escapeHtml(task.assignedTo)}</div>
-                            <div class="tc-meta-row"><strong>Created by:</strong> ${this.escapeHtml(task.user)}</div>
+                            <div class="tc-meta-row"><strong>Assigned:</strong> ${this.escapeHtml(assignedTo)}</div>
+                            <div class="tc-meta-row"><strong>Created by:</strong> ${this.escapeHtml(user)}</div>
                         </div>
                         <div class="tc-date">📅 ${date}</div>
                         <div class="tc-actions">
-                            <button class="btn-edit-card" onclick="handleTaskEdit('${task.id}')">
-                                ✏️ Edit
-                            </button>
-                            <button class="btn-del-card" onclick="handleTaskDelete('${task.id}')">
-                                🗑️ Delete
-                            </button>
+                            <button class="btn-edit-card" onclick="handleTaskEdit('${id}')">✏️ Edit</button>
+                            <button class="btn-del-card" onclick="handleTaskDelete('${id}')">🗑️ Delete</button>
                         </div>
                     </div>
                 `;
@@ -576,14 +657,334 @@
         }
 
         // ============================================
+        // ConfigStore Class
+        // ============================================
+        class ConfigStore {
+            static KEYS = {
+                WEB_APP_URL:    'adminConfig.webAppUrl',
+                SPREADSHEET_ID: 'adminConfig.spreadsheetId',
+                WEBHOOK_PREFIX: 'adminConfig.webhook.',
+            };
+
+            static TEAMS = ['Marketing Team', 'Creatives Team', 'Development Team', 'Operations Team', 'Everyone'];
+
+            get(key) {
+                try {
+                    return localStorage.getItem(key);
+                } catch (e) {
+                    return null;
+                }
+            }
+
+            set(key, value) {
+                try {
+                    localStorage.setItem(key, value);
+                } catch (e) {
+                    // Fall back silently on SecurityError or QuotaExceededError
+                }
+            }
+
+            remove(key) {
+                try {
+                    localStorage.removeItem(key);
+                } catch (e) {
+                    // Fall back silently
+                }
+            }
+
+            getAll() {
+                const webAppUrl = this.get(ConfigStore.KEYS.WEB_APP_URL) || '';
+                const spreadsheetId = this.get(ConfigStore.KEYS.SPREADSHEET_ID) || '';
+                const webhooks = {};
+                for (const team of ConfigStore.TEAMS) {
+                    webhooks[team] = this.get(ConfigStore.KEYS.WEBHOOK_PREFIX + team) || '';
+                }
+                return { webAppUrl, spreadsheetId, webhooks };
+            }
+
+            saveAll(settings) {
+                this.set(ConfigStore.KEYS.WEB_APP_URL, settings.webAppUrl || '');
+                this.set(ConfigStore.KEYS.SPREADSHEET_ID, settings.spreadsheetId || '');
+                if (settings.webhooks) {
+                    for (const team of ConfigStore.TEAMS) {
+                        this.set(ConfigStore.KEYS.WEBHOOK_PREFIX + team, settings.webhooks[team] || '');
+                    }
+                }
+            }
+
+            clear() {
+                try {
+                    const keysToRemove = [];
+                    for (let i = 0; i < localStorage.length; i++) {
+                        const key = localStorage.key(i);
+                        if (key && key.startsWith('adminConfig.')) {
+                            keysToRemove.push(key);
+                        }
+                    }
+                    for (const key of keysToRemove) {
+                        localStorage.removeItem(key);
+                    }
+                } catch (e) {
+                    // Fall back silently
+                }
+            }
+
+            static extractSpreadsheetId(input) {
+                if (!input) return input;
+                const match = input.match(/\/spreadsheets\/d\/([a-zA-Z0-9_-]+)/);
+                return match ? match[1] : input;
+            }
+        }
+
+        // ============================================
+        // Validator
+        // ============================================
+        const Validator = {
+            requireNonEmpty(value) {
+                if (!value || value.trim() === '') {
+                    return { valid: false, error: 'Required' };
+                }
+                return { valid: true };
+            },
+
+            validateWebAppUrl(value) {
+                if (!value || value.trim() === '') {
+                    return { valid: true };
+                }
+                if (!value.startsWith('https://script.google.com/macros/s/')) {
+                    return { valid: true, warning: 'URL may not be a valid Google Apps Script Web App URL' };
+                }
+                return { valid: true };
+            },
+
+            validateDiscordWebhook(value) {
+                if (!value || value.trim() === '') {
+                    return { valid: true };
+                }
+                const pattern = /^https:\/\/discord\.com\/api\/webhooks\/\d+\/[\w-]+$/;
+                if (!pattern.test(value)) {
+                    return { valid: true, warning: 'URL may not be a valid Discord webhook URL' };
+                }
+                return { valid: true };
+            }
+        };
+
+        // ============================================
+        // ConfigLoader Class
+        // ============================================
+        class ConfigLoader {
+            constructor(configStore, backendClient, dashboardClient) {
+                this.configStore = configStore;
+                this.backendClient = backendClient;
+                this.dashboardClient = dashboardClient;
+            }
+
+            init() {
+                const settings = this.configStore.getAll();
+                if (settings.webAppUrl) {
+                    this.applyUrl(settings.webAppUrl);
+                } else {
+                    this.applyDefaults();
+                }
+            }
+
+            applyUrl(url) {
+                this.backendClient.webAppUrl = url;
+                this.dashboardClient.webAppUrl = url;
+            }
+
+            applyDefaults() {
+                this.backendClient.webAppUrl = DEFAULTS.WEB_APP_URL;
+                this.dashboardClient.webAppUrl = DEFAULTS.WEB_APP_URL;
+            }
+        }
+
+        // ============================================
+        // AdminDashboard Class
+        // ============================================
+        class AdminDashboard {
+            constructor(configStore, configLoader, validator) {
+                this.configStore = configStore;
+                this.configLoader = configLoader;
+                this.validator = validator;
+            }
+
+            open() {
+                const settings = this.configStore.getAll();
+
+                document.getElementById('adminWebAppUrl').value = settings.webAppUrl || '';
+                document.getElementById('adminSpreadsheetId').value = settings.spreadsheetId || '';
+
+                const teamInputIds = {
+                    'Marketing Team':   'adminWebhook_Marketing_Team',
+                    'Creatives Team':   'adminWebhook_Creatives_Team',
+                    'Development Team': 'adminWebhook_Development_Team',
+                    'Operations Team':  'adminWebhook_Operations_Team',
+                    'Everyone':         'adminWebhook_Everyone'
+                };
+
+                for (const team of ConfigStore.TEAMS) {
+                    const inputId = teamInputIds[team];
+                    if (inputId) {
+                        document.getElementById(inputId).value = (settings.webhooks && settings.webhooks[team]) || '';
+                    }
+                }
+
+                this._updateStatusSummary(settings);
+                document.getElementById('adminOverlay').classList.add('open');
+            }
+
+            close() {
+                document.getElementById('adminOverlay').classList.remove('open');
+            }
+
+            async save() {
+                this._clearErrors();
+
+                const webAppUrl = document.getElementById('adminWebAppUrl').value.trim();
+                const spreadsheetIdRaw = document.getElementById('adminSpreadsheetId').value.trim();
+                const spreadsheetId = ConfigStore.extractSpreadsheetId(spreadsheetIdRaw);
+
+                const teamInputIds = {
+                    'Marketing Team':   'adminWebhook_Marketing_Team',
+                    'Creatives Team':   'adminWebhook_Creatives_Team',
+                    'Development Team': 'adminWebhook_Development_Team',
+                    'Operations Team':  'adminWebhook_Operations_Team',
+                    'Everyone':         'adminWebhook_Everyone'
+                };
+
+                const webhooks = {};
+                for (const team of ConfigStore.TEAMS) {
+                    const inputId = teamInputIds[team];
+                    webhooks[team] = inputId ? document.getElementById(inputId).value.trim() : '';
+                }
+
+                let hasErrors = false;
+
+                // Validate webAppUrl
+                const urlRequired = this.validator.requireNonEmpty(webAppUrl);
+                if (!urlRequired.valid) {
+                    this._showFieldError('adminWebAppUrl', urlRequired.error);
+                    hasErrors = true;
+                } else {
+                    const urlCheck = this.validator.validateWebAppUrl(webAppUrl);
+                    if (urlCheck.warning) {
+                        this._showFieldError('adminWebAppUrl', urlCheck.warning, true);
+                    }
+                }
+
+                // Validate spreadsheetId
+                const sheetRequired = this.validator.requireNonEmpty(spreadsheetId);
+                if (!sheetRequired.valid) {
+                    this._showFieldError('adminSpreadsheetId', sheetRequired.error);
+                    hasErrors = true;
+                }
+
+                // Validate each webhook
+                for (const team of ConfigStore.TEAMS) {
+                    const inputId = teamInputIds[team];
+                    if (inputId) {
+                        const webhookCheck = this.validator.validateDiscordWebhook(webhooks[team]);
+                        if (webhookCheck.warning) {
+                            this._showFieldError(inputId, webhookCheck.warning, true);
+                        }
+                    }
+                }
+
+                if (hasErrors) return;
+
+                const settings = { webAppUrl, spreadsheetId, webhooks };
+                this.configStore.saveAll(settings);
+                this.configLoader.applyUrl(webAppUrl);
+
+                await showNotification('success', 'Settings Saved!', 'Your configuration has been saved successfully.', { timer: 2000 });
+                this.close();
+            }
+
+            async resetToDefaults() {
+                const result = await showNotification('warning', 'Reset to Defaults?', 'This will clear all saved settings.', {
+                    showCancelButton: true,
+                    confirmButtonText: 'Yes, reset',
+                    cancelButtonText: 'Cancel'
+                });
+
+                if (!result.isConfirmed) return;
+
+                this.configStore.clear();
+                this.configLoader.applyDefaults();
+
+                // Repopulate form with empty values
+                document.getElementById('adminWebAppUrl').value = '';
+                document.getElementById('adminSpreadsheetId').value = '';
+
+                const teamInputIds = {
+                    'Marketing Team':   'adminWebhook_Marketing_Team',
+                    'Creatives Team':   'adminWebhook_Creatives_Team',
+                    'Development Team': 'adminWebhook_Development_Team',
+                    'Operations Team':  'adminWebhook_Operations_Team',
+                    'Everyone':         'adminWebhook_Everyone'
+                };
+
+                for (const team of ConfigStore.TEAMS) {
+                    const inputId = teamInputIds[team];
+                    if (inputId) {
+                        document.getElementById(inputId).value = '';
+                    }
+                }
+
+                const emptySettings = {
+                    webAppUrl: '',
+                    spreadsheetId: '',
+                    webhooks: Object.fromEntries(ConfigStore.TEAMS.map(t => [t, '']))
+                };
+                this._updateStatusSummary(emptySettings);
+            }
+
+            _updateStatusSummary(settings) {
+                const list = document.getElementById('adminStatusList');
+                if (!list) return;
+
+                const items = ConfigStore.TEAMS.map(team => {
+                    const webhook = (settings.webhooks && settings.webhooks[team]) || '';
+                    const isConfigured = webhook.trim() !== '';
+                    const dotClass = isConfigured ? 'status-dot configured' : 'status-dot unconfigured';
+                    const statusText = isConfigured ? 'Configured' : 'Not configured';
+                    return `<li class="admin-status-item"><span class="${dotClass}"></span>${team} — ${statusText}</li>`;
+                });
+
+                list.innerHTML = items.join('');
+            }
+
+            _showFieldError(fieldId, message, isWarning = false) {
+                const field = document.getElementById(fieldId);
+                if (!field) return;
+
+                const span = document.createElement('span');
+                span.className = isWarning ? 'field-warning' : 'field-error';
+                span.setAttribute('data-field-id', fieldId);
+                span.textContent = message;
+                field.insertAdjacentElement('afterend', span);
+            }
+
+            _clearErrors() {
+                const adminModal = document.querySelector('.admin-modal');
+                if (!adminModal) return;
+                adminModal.querySelectorAll('.field-error, .field-warning').forEach(el => el.remove());
+            }
+        }
+
+        // ============================================
         // GLOBAL INSTANCES
         // ============================================
         const historyManager = new TaskHistoryManager();
-        const backendClient = new BackendClient(WEB_APP_URL);
-        const dashboardClient = new DashboardClient(WEB_APP_URL);
+        const backendClient = new BackendClient(DEFAULTS.WEB_APP_URL);
+        const dashboardClient = new DashboardClient(DEFAULTS.WEB_APP_URL);
         const modalManager = new ModalManager();
         const formManager = new TaskFormManager();
         const historyRenderer = new HistoryRenderer('taskHistory');
+        const configStore = new ConfigStore();
+        const configLoader = new ConfigLoader(configStore, backendClient, dashboardClient);
+        const adminDashboard = new AdminDashboard(configStore, configLoader, Validator);
 
         // ============================================
         // NOTIFICATION SYSTEM
@@ -817,6 +1218,7 @@
         // ============================================
         document.addEventListener('DOMContentLoaded', function() {
             console.log('Task Manager initialized');
+            configLoader.init();
             refreshHistoryDisplay();
             
             // Close modal on overlay click

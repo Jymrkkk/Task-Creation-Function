@@ -357,7 +357,7 @@ function saveTaskToSheet(taskData, messageId, oldMessageId) {
         // Update existing row
         Logger.log("[saveTaskToSheet] Updating existing row " + rowIndex);
         
-        const timestamp = new Date().toISOString();
+        const timestamp = Utilities.formatDate(new Date(), Session.getScriptTimeZone(), "MMMM dd, yyyy 'at' hh:mm a");
         const row = [
           timestamp,
           taskData.taskName,
@@ -380,7 +380,7 @@ function saveTaskToSheet(taskData, messageId, oldMessageId) {
     // If not an update or row not found, append new row
     Logger.log("[saveTaskToSheet] Appending new row");
     
-    const timestamp = new Date().toISOString();
+    const timestamp = Utilities.formatDate(new Date(), Session.getScriptTimeZone(), "MMMM dd, yyyy 'at' hh:mm a");
     const row = [
       timestamp,
       taskData.taskName,
@@ -714,57 +714,33 @@ function doPost(e) {
  * @returns {Object} Discord embed object
  */
 function createDiscordEmbed(taskData, options) {
-  // Determine color based on priority
-  const priorityColors = {
-    "High": 15158332,    // Red
-    "Medium": 16776960,  // Yellow
-    "Low": 3447003       // Blue
-  };
-  
-  const color = priorityColors[taskData.priority] || 3447003;
-  
-  // Determine title based on whether this is an update
-  const titlePrefix = taskData.messageId ? "📝 Updated Task: " : "📋 New Task: ";
-  
-  // Build base fields
-  const fields = [
-    {
-      name: "Priority",
-      value: taskData.priority,
-      inline: true
-    },
-    {
-      name: "Assigned To",
-      value: taskData.assignedTo,
-      inline: true
-    },
-    {
-      name: "Created By",
-      value: taskData.user,
-      inline: true
-    }
-  ];
-  
-  // Add reassignment field if this is a cross-channel update
+  const isUpdate = !!taskData.messageId;
+  const header = isUpdate ? "📝 **Task Updated**" : "📌 **New Task Created**";
+
+  // Priority emoji
+  const priorityEmoji = taskData.priority === "High" ? "🔴" : taskData.priority === "Medium" ? "⚡" : "🟢";
+
+  // Build reassignment note if needed
+  let reassignNote = "";
   if (options && options.isCrossChannel && options.originalTeam) {
-    fields.push({
-      name: "⚠️ Reassigned",
-      value: "This task was reassigned from " + options.originalTeam,
-      inline: false
-    });
+    reassignNote = "\n⚠️ **Reassigned from:** " + options.originalTeam;
   }
-  
+
+  const body = [
+    header,
+    "",
+    "📝 **Task:** " + taskData.taskName,
+    "📄 **Description:** " + (taskData.description || "No description provided"),
+    "",
+    priorityEmoji + " **Priority:** " + taskData.priority,
+    "👤 **Requested By:** " + taskData.user,
+    "👥 **Assigned To:** " + taskData.assignedTo,
+    "📊 **Status:** In Progress" + reassignNote
+  ].join("\n");
+
   return {
-    embeds: [{
-      title: titlePrefix + taskData.taskName,
-      description: taskData.description || "No description provided",
-      color: color,
-      fields: fields,
-      timestamp: new Date().toISOString(),
-      footer: {
-        text: "Task Management System"
-      }
-    }]
+    username: "Task Bot (" + taskData.assignedTo + ")",
+    content: body
   };
 }
 
