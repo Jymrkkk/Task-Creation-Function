@@ -1192,12 +1192,15 @@
             if (!channels.length) {
                 dropdown.innerHTML = `<div class="ms-empty">No channels configured</div>`;
             } else {
-                // Use index as value to avoid name-matching issues
-                dropdown.innerHTML = channels.map((c, i) => `
-                    <label class="ms-option">
-                        <input type="checkbox" value="${i}" data-name="${c.name}" onchange="updateAssignedToLabel()">
+                // Store name AND url directly on the checkbox — no index/lookup needed
+                dropdown.innerHTML = channels.map(c => {
+                    const safeName = c.name.replace(/"/g, '&quot;');
+                    const safeUrl  = (c.url || '').replace(/"/g, '&quot;');
+                    return `<label class="ms-option">
+                        <input type="checkbox" data-name="${safeName}" data-url="${safeUrl}" onchange="updateAssignedToLabel()">
                         <span>${c.name}</span>
-                    </label>`).join('');
+                    </label>`;
+                }).join('');
             }
             updateAssignedToLabel();
         }
@@ -1215,14 +1218,13 @@
                 : '— Select channel(s) —';
         }
 
-        // Returns array of {name, url} for checked channels
+        // Returns array of {name, url} read directly from checked checkbox data attributes
         function getSelectedChannelObjects() {
             const dropdown = document.getElementById('assignedToDropdown');
             if (!dropdown) return [];
-            const channels = configStore.getChannels();
             return [...dropdown.querySelectorAll('input[type=checkbox]:checked')]
-                .map(cb => channels[parseInt(cb.value)])
-                .filter(Boolean);
+                .map(cb => ({ name: cb.dataset.name, url: cb.dataset.url }))
+                .filter(c => c.name);
         }
 
         // Returns array of names (for display/storage)
@@ -1346,7 +1348,8 @@
                 // Store as comma-separated for display; send array of webhooks to backend
                 taskData.assignedTo = selectedChannels.map(c => c.name).join(', ');
                 taskData.webhookUrls = selectedChannels;
-                console.log('[sendTestTask] Sending to channels:', selectedChannels.map(c => c.name));
+                console.log('[sendTestTask] Channels being sent:');
+                selectedChannels.forEach(c => console.log(`  → ${c.name}: ${c.url.slice(0, 60)}...`));
                 
                 // Disable button during submission
                 const saveButton = document.getElementById('mSave');
