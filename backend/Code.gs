@@ -729,8 +729,8 @@ function handleCompleteTask(requestData) {
       const searchIdStr = String(searchId).trim();
 
       for (let i = 1; i < values.length; i++) {
-        const rowMsgId = String(values[i][7]).trim();
-        if (rowMsgId === searchIdStr || rowMsgId.includes(searchIdStr)) {
+        const rowMsgId = String(values[i][7]).replace(/^'/, '').trim();
+        if (rowMsgId === searchIdStr || rowMsgId.includes(searchIdStr) || searchIdStr.includes(rowMsgId)) {
           sheet.getRange(i + 1, 7).setValue("Done"); // Status column
           Logger.log("[handleCompleteTask] Updated row " + (i + 1) + " status to Done");
           break;

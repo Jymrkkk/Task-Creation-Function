@@ -501,16 +501,15 @@
                         action: 'completeTask',
                         completionMessage: completionMessage || ''
                     };
-                    // Use no-cors so the request fires even from GitHub Pages
-                    // (we won't get a response back, but the server will process it)
-                    await fetch(this.webAppUrl, {
+                    const response = await fetch(this.webAppUrl, {
                         method: 'POST',
                         headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-                        body: JSON.stringify(payload),
-                        mode: 'no-cors'
+                        body: JSON.stringify(payload)
                     });
-                    // no-cors returns an opaque response — treat as success
-                    return { success: true };
+                    if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+                    const result = await response.json();
+                    if (!result.success) throw new Error(result.error || 'Unknown error occurred');
+                    return result;
                 } catch (error) {
                     if (error.name === 'TypeError' && error.message.includes('fetch'))
                         throw new Error('Network failure: Unable to reach the server. Please check your connection.');
