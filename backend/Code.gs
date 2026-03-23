@@ -1162,3 +1162,38 @@ function createErrorResponse(error, details) {
     .createTextOutput(JSON.stringify(response))
     .setMimeType(ContentService.MimeType.JSON);
 }
+
+/**
+ * DEBUG: Run this function manually in GAS editor to test sheet update
+ * Select this function in the dropdown and click Run
+ */
+function debugCompleteTask() {
+  const spreadsheet = SpreadsheetApp.getActiveSpreadsheet();
+  const sheet = spreadsheet && spreadsheet.getSheetByName("Dashboard");
+  
+  if (!sheet) {
+    Logger.log("ERROR: Dashboard sheet not found!");
+    return;
+  }
+  
+  const dataRange = sheet.getDataRange();
+  const values = dataRange.getValues();
+  
+  Logger.log("=== SHEET CONTENTS ===");
+  Logger.log("Total rows (including header): " + values.length);
+  
+  for (let i = 0; i < values.length; i++) {
+    const row = values[i];
+    Logger.log("Row " + (i+1) + ": TaskName='" + row[1] + "' Status='" + row[6] + "' MessageId='" + row[7] + "'");
+  }
+  
+  Logger.log("=== ATTEMPTING TO UPDATE LAST DATA ROW TO DONE ===");
+  if (values.length > 1) {
+    const lastRow = values.length; // last row index (1-based)
+    const statusCell = sheet.getRange(lastRow, 7);
+    Logger.log("Current value: " + statusCell.getValue());
+    statusCell.clearDataValidations();
+    statusCell.setValue("Done");
+    Logger.log("Set to Done. New value: " + sheet.getRange(lastRow, 7).getValue());
+  }
+}
