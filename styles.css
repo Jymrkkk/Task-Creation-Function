@@ -854,7 +854,7 @@ body {
     inset: 0;
     background: rgba(20, 10, 45, 0.6);
     backdrop-filter: blur(8px);
-    z-index: 600;
+    z-index: 9999;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -1407,6 +1407,11 @@ body {
 /* Preset name modal — must sit above admin overlay (z-index 400) */
 #presetNameOverlay {
     z-index: 500;
+}
+
+/* Ensure notif overlay is always on top of everything */
+#notifOverlay {
+    z-index: 9999 !important;
 }
 
 #webhookList {
