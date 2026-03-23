@@ -1156,9 +1156,10 @@
             if (!channels.length) {
                 dropdown.innerHTML = `<div class="ms-empty">No channels configured</div>`;
             } else {
-                dropdown.innerHTML = channels.map(c => `
+                // Use index as value to avoid name-matching issues
+                dropdown.innerHTML = channels.map((c, i) => `
                     <label class="ms-option">
-                        <input type="checkbox" value="${c.name}" onchange="updateAssignedToLabel()">
+                        <input type="checkbox" value="${i}" data-name="${c.name}" onchange="updateAssignedToLabel()">
                         <span>${c.name}</span>
                     </label>`).join('');
             }
@@ -1171,24 +1172,33 @@
         }
 
         function updateAssignedToLabel() {
-            const checked = getSelectedChannels();
+            const selected = getSelectedChannelObjects();
             const label = document.getElementById('assignedToLabel');
-            label.textContent = checked.length
-                ? checked.join(', ')
+            label.textContent = selected.length
+                ? selected.map(c => c.name).join(', ')
                 : '— Select channel(s) —';
         }
 
-        function getSelectedChannels() {
+        // Returns array of {name, url} for checked channels
+        function getSelectedChannelObjects() {
             const dropdown = document.getElementById('assignedToDropdown');
             if (!dropdown) return [];
-            return [...dropdown.querySelectorAll('input[type=checkbox]:checked')].map(cb => cb.value);
+            const channels = configStore.getChannels();
+            return [...dropdown.querySelectorAll('input[type=checkbox]:checked')]
+                .map(cb => channels[parseInt(cb.value)])
+                .filter(Boolean);
+        }
+
+        // Returns array of names (for display/storage)
+        function getSelectedChannels() {
+            return getSelectedChannelObjects().map(c => c.name);
         }
 
         function setSelectedChannels(names) {
             const dropdown = document.getElementById('assignedToDropdown');
             if (!dropdown) return;
             dropdown.querySelectorAll('input[type=checkbox]').forEach(cb => {
-                cb.checked = names.includes(cb.value);
+                cb.checked = names.includes(cb.dataset.name);
             });
             updateAssignedToLabel();
         }
@@ -1289,19 +1299,18 @@
                 if (!channels.length) {
                     throw new Error('No channels configured. Please open Admin Settings (⚙️) and add your Discord webhook channels first.');
                 }
-                const selectedNames = getSelectedChannels();
-                if (!selectedNames.length) {
+                const selectedChannels = getSelectedChannelObjects();
+                if (!selectedChannels.length) {
                     throw new Error('Please select at least one channel to assign this task to.');
                 }
-                // Build list of {name, url} for selected channels
-                const selectedChannels = selectedNames.map(name => {
-                    const ch = channels.find(c => c.name === name);
-                    if (!ch || !ch.url) throw new Error(`No webhook URL set for "${name}". Please update it in Admin Settings.`);
-                    return ch;
+                // Validate all selected channels have URLs
+                selectedChannels.forEach(ch => {
+                    if (!ch.url) throw new Error(`No webhook URL set for "${ch.name}". Please update it in Admin Settings.`);
                 });
                 // Store as comma-separated for display; send array of webhooks to backend
-                taskData.assignedTo = selectedNames.join(', ');
-                taskData.webhookUrls = selectedChannels.map(c => ({ name: c.name, url: c.url }));
+                taskData.assignedTo = selectedChannels.map(c => c.name).join(', ');
+                taskData.webhookUrls = selectedChannels;
+                console.log('[sendTestTask] Sending to channels:', selectedChannels.map(c => c.name));
                 
                 // Disable button during submission
                 const saveButton = document.getElementById('mSave');
@@ -1390,8 +1399,8 @@
                 const channels = configStore.getChannels();
                 const assignedNames = (task.assignedTo || '').split(',').map(s => s.trim());
                 const webhookEntries = assignedNames.map(name => {
-                    const ch = channels.find(c => c.name === name);
-                    return ch ? { name: ch.name, url: ch.url } : null;
+                    const ch = channels.find(c => c.name.trim() === name.trim());
+                    return ch && ch.url ? { name: ch.name, url: ch.url } : null;
                 }).filter(Boolean);
                 if (webhookEntries.length) task.webhookUrls = webhookEntries;
                 await backendClient.completeTask(task, task.messageId, completionMessage);
