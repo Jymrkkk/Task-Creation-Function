@@ -126,9 +126,15 @@
                     </div>
                     <div class="form-group">
                         <label class="form-label">Assigned To</label>
-                        <select class="form-select" id="assignedTo">
-                            <option value="">— Select channel —</option>
-                        </select>
+                        <div class="multi-select" id="assignedToWrapper">
+                            <button type="button" class="multi-select-trigger" id="assignedToTrigger" onclick="toggleMultiSelect()">
+                                <span id="assignedToLabel">— Select channel(s) —</span>
+                                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg>
+                            </button>
+                            <div class="multi-select-dropdown" id="assignedToDropdown">
+                                <!-- Populated by populateAssignedTo() -->
+                            </div>
+                        </div>
                     </div>
                 </div>
                 <div class="form-group">
@@ -565,7 +571,8 @@
                         document.getElementById('taskName').value = taskData.taskName;
                         document.getElementById('description').value = taskData.description;
                         document.getElementById('priority').value = taskData.priority;
-                        document.getElementById('assignedTo').value = taskData.assignedTo;
+                        // Restore multi-select — assignedTo may be comma-separated
+                        setSelectedChannels((taskData.assignedTo || '').split(',').map(s => s.trim()));
                         document.getElementById('user').value = taskData.user;
                     }
                 } else {
@@ -580,7 +587,7 @@
                     document.getElementById('taskName').value = '';
                     document.getElementById('description').value = '';
                     document.getElementById('priority').value = 'Low';
-                    document.getElementById('assignedTo').value = 'Marketing Team';
+                    setSelectedChannels([]);
                     document.getElementById('user').value = '';
                 }
 
@@ -611,7 +618,6 @@
                     taskName: document.getElementById('taskName'),
                     description: document.getElementById('description'),
                     priority: document.getElementById('priority'),
-                    assignedTo: document.getElementById('assignedTo'),
                     user: document.getElementById('user')
                 };
             }
@@ -621,26 +627,16 @@
                     taskName: this.fields.taskName.value.trim(),
                     description: this.fields.description.value.trim(),
                     priority: this.fields.priority.value,
-                    assignedTo: this.fields.assignedTo.value,
+                    assignedTo: getSelectedChannels().join(', '),
                     user: this.fields.user.value.trim()
                 };
             }
 
             validateForm() {
                 const data = this.getFormData();
-                
-                if (!data.taskName) {
-                    throw new Error('Task name is required');
-                }
-                
-                if (!data.description) {
-                    throw new Error('Description is required');
-                }
-                
-                if (!data.user) {
-                    throw new Error('User name is required');
-                }
-                
+                if (!data.taskName) throw new Error('Task name is required');
+                if (!data.description) throw new Error('Description is required');
+                if (!data.user) throw new Error('User name is required');
                 return true;
             }
 
@@ -648,7 +644,7 @@
                 this.fields.taskName.value = '';
                 this.fields.description.value = '';
                 this.fields.priority.value = 'Low';
-                this.fields.assignedTo.value = 'Marketing Team';
+                setSelectedChannels([]);
                 this.fields.user.value = '';
             }
         }
@@ -1152,20 +1148,58 @@
         const configLoader = new ConfigLoader(configStore, backendClient, dashboardClient);
         const adminDashboard = new AdminDashboard(configStore, configLoader, Validator);
 
-        // Populate the "Assigned To" dropdown from saved channels
+        // Populate the "Assigned To" multi-select from saved channels
         function populateAssignedTo() {
-            const select = document.getElementById('assignedTo');
-            if (!select) return;
+            const dropdown = document.getElementById('assignedToDropdown');
+            if (!dropdown) return;
             const channels = configStore.getChannels();
-            const current = select.value;
-            select.innerHTML = channels.length
-                ? channels.map(c => `<option value="${c.name}">${c.name}</option>`).join('')
-                : `<option value="">— No channels configured —</option>`;
-            // Restore previous selection if still valid
-            if (current && [...select.options].some(o => o.value === current)) {
-                select.value = current;
+            if (!channels.length) {
+                dropdown.innerHTML = `<div class="ms-empty">No channels configured</div>`;
+            } else {
+                dropdown.innerHTML = channels.map(c => `
+                    <label class="ms-option">
+                        <input type="checkbox" value="${c.name}" onchange="updateAssignedToLabel()">
+                        <span>${c.name}</span>
+                    </label>`).join('');
             }
+            updateAssignedToLabel();
         }
+
+        function toggleMultiSelect() {
+            const wrapper = document.getElementById('assignedToWrapper');
+            wrapper.classList.toggle('open');
+        }
+
+        function updateAssignedToLabel() {
+            const checked = getSelectedChannels();
+            const label = document.getElementById('assignedToLabel');
+            label.textContent = checked.length
+                ? checked.join(', ')
+                : '— Select channel(s) —';
+        }
+
+        function getSelectedChannels() {
+            const dropdown = document.getElementById('assignedToDropdown');
+            if (!dropdown) return [];
+            return [...dropdown.querySelectorAll('input[type=checkbox]:checked')].map(cb => cb.value);
+        }
+
+        function setSelectedChannels(names) {
+            const dropdown = document.getElementById('assignedToDropdown');
+            if (!dropdown) return;
+            dropdown.querySelectorAll('input[type=checkbox]').forEach(cb => {
+                cb.checked = names.includes(cb.value);
+            });
+            updateAssignedToLabel();
+        }
+
+        // Close multi-select when clicking outside
+        document.addEventListener('click', function(e) {
+            const wrapper = document.getElementById('assignedToWrapper');
+            if (wrapper && !wrapper.contains(e.target)) {
+                wrapper.classList.remove('open');
+            }
+        });
 
         // ============================================
         // NOTIFICATION SYSTEM
@@ -1255,11 +1289,19 @@
                 if (!channels.length) {
                     throw new Error('No channels configured. Please open Admin Settings (⚙️) and add your Discord webhook channels first.');
                 }
-                const matchedChannel = channels.find(c => c.name === taskData.assignedTo);
-                if (!matchedChannel || !matchedChannel.url) {
-                    throw new Error('No webhook URL set for "' + taskData.assignedTo + '". Please open Admin Settings (⚙️) and add the webhook URL for this channel.');
+                const selectedNames = getSelectedChannels();
+                if (!selectedNames.length) {
+                    throw new Error('Please select at least one channel to assign this task to.');
                 }
-                taskData.webhookUrl = matchedChannel.url;
+                // Build list of {name, url} for selected channels
+                const selectedChannels = selectedNames.map(name => {
+                    const ch = channels.find(c => c.name === name);
+                    if (!ch || !ch.url) throw new Error(`No webhook URL set for "${name}". Please update it in Admin Settings.`);
+                    return ch;
+                });
+                // Store as comma-separated for display; send array of webhooks to backend
+                taskData.assignedTo = selectedNames.join(', ');
+                taskData.webhookUrls = selectedChannels.map(c => ({ name: c.name, url: c.url }));
                 
                 // Disable button during submission
                 const saveButton = document.getElementById('mSave');
@@ -1344,10 +1386,14 @@
             btn.textContent = 'Saving...';
 
             try {
-                // Attach webhook URL for completion notification
+                // Attach webhook URL(s) for completion notification
                 const channels = configStore.getChannels();
-                const matchedChannel = channels.find(c => c.name === task.assignedTo);
-                if (matchedChannel) task.webhookUrl = matchedChannel.url;
+                const assignedNames = (task.assignedTo || '').split(',').map(s => s.trim());
+                const webhookEntries = assignedNames.map(name => {
+                    const ch = channels.find(c => c.name === name);
+                    return ch ? { name: ch.name, url: ch.url } : null;
+                }).filter(Boolean);
+                if (webhookEntries.length) task.webhookUrls = webhookEntries;
                 await backendClient.completeTask(task, task.messageId, completionMessage);
             } catch (error) {
                 // CORS/network errors are expected when GAS processes the request successfully

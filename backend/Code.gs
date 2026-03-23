@@ -511,29 +511,41 @@ function doPost(e) {
     Logger.log("[doPost] Processing task: " + requestData.taskName + ", assignedTo: " + requestData.assignedTo);
     Logger.log("[doPost] Request messageId: " + requestData.messageId);
 
-    // Use webhookUrl from payload (new dynamic system) or fall back to Script Properties
-    const webhookUrl = requestData.webhookUrl || getWebhookUrl(requestData.assignedTo);
+    // Use webhookUrls array (new multi-select) or single webhookUrl, or fall back to Script Properties
+    const webhookEntries = requestData.webhookUrls || 
+      (requestData.webhookUrl ? [{ name: requestData.assignedTo, url: requestData.webhookUrl }] : null);
 
-    if (!webhookUrl) {
+    if (!webhookEntries || webhookEntries.length === 0) {
       return createErrorResponse("Configuration error", "No webhook URL configured for: " + requestData.assignedTo);
     }
 
     const embed = createDiscordEmbed(requestData);
-    let discordResponse;
+    let allMessageIds = [];
 
-    if (requestData.messageId && !Array.isArray(requestData.messageId)) {
-      // Update existing single message
+    for (let i = 0; i < webhookEntries.length; i++) {
+      const entry = webhookEntries[i];
       try {
-        discordResponse = updateDiscordMessage(webhookUrl, requestData.messageId, embed);
-      } catch (updateErr) {
-        // If message not found, post a new one
-        Logger.log("[doPost] Update failed, posting new: " + updateErr.toString());
-        discordResponse = sendToDiscord(webhookUrl, embed);
+        let resp;
+        if (requestData.messageId && !Array.isArray(requestData.messageId)) {
+          try {
+            resp = updateDiscordMessage(entry.url, requestData.messageId, embed);
+          } catch(e) {
+            resp = sendToDiscord(entry.url, embed);
+          }
+        } else {
+          resp = sendToDiscord(entry.url, embed);
+        }
+        allMessageIds.push(resp.messageId);
+      } catch(e) {
+        Logger.log("[doPost] Failed to send to " + entry.name + ": " + e.toString());
       }
-    } else {
-      // New message
-      discordResponse = sendToDiscord(webhookUrl, embed);
     }
+
+    if (allMessageIds.length === 0) {
+      return createErrorResponse("Discord API error", "Failed to send to all selected channels.");
+    }
+
+    const discordResponse = { messageId: allMessageIds.length === 1 ? allMessageIds[0] : allMessageIds };
     
     // Save to Google Sheets
     try {
@@ -671,11 +683,22 @@ function handleCompleteTask(requestData) {
       content: body
     };
 
-    // Send to the relevant webhook — use payload webhookUrl or fall back to Script Properties
-    const webhookUrl = requestData.webhookUrl || getWebhookUrl(requestData.assignedTo);
-    if (webhookUrl) {
-      try { sendToDiscord(webhookUrl, embed); } catch(e) {
-        Logger.log("[handleCompleteTask] Failed to notify: " + e.toString());
+    // Send to the relevant webhook(s) — use payload webhookUrls array or single webhookUrl
+    const webhookEntries = requestData.webhookUrls ||
+      (requestData.webhookUrl ? [{ name: requestData.assignedTo, url: requestData.webhookUrl }] : null);
+    if (webhookEntries && webhookEntries.length) {
+      webhookEntries.forEach(function(entry) {
+        try { sendToDiscord(entry.url, embed); } catch(e) {
+          Logger.log("[handleCompleteTask] Failed to notify " + entry.name + ": " + e.toString());
+        }
+      });
+    } else {
+      // Fallback to Script Properties
+      const webhookUrl = getWebhookUrl(requestData.assignedTo);
+      if (webhookUrl) {
+        try { sendToDiscord(webhookUrl, embed); } catch(e) {
+          Logger.log("[handleCompleteTask] Failed to notify: " + e.toString());
+        }
       }
     }
 
