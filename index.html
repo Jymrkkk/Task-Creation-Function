@@ -971,7 +971,7 @@
                 this.configStore.saveAll(settings);
                 this.configLoader.applyUrl(webAppUrl);
 
-                await showNotification('success', 'Settings Saved!', 'Your configuration has been saved successfully.', { timer: 2000 });
+                await showNotification('success', 'Settings Saved!', 'Your configuration has been saved successfully.', { timer: 4000 });
                 this.close();
             }
 
@@ -1227,20 +1227,23 @@
 
             try {
                 await backendClient.completeTask(task, task.messageId, completionMessage);
-                historyManager.updateTaskStatus(_completeTaskId, 'Done');
-                closeCompleteModal();
-                const localTasks = historyManager.getAllTasks();
-                historyRenderer.renderTasks(localTasks);
-                updateTaskCount(localTasks.length);
-                updateQuickStats(localTasks);
-                await showNotification('success', 'Task Completed!', 'The task has been marked as done and Discord has been notified.', { timer: 2000 });
             } catch (error) {
-                console.error('Error completing task:', error);
-                await showNotification('error', 'Error', error.message || 'Failed to complete task.');
-            } finally {
-                btn.disabled = false;
-                btn.textContent = '✅ Mark as Done';
+                // Backend/network failed — Discord may still have received it.
+                // We still mark it done locally so the UI stays consistent.
+                console.warn('Backend complete failed (task marked done locally):', error.message);
             }
+
+            // Always update local status and UI regardless of backend result
+            historyManager.updateTaskStatus(_completeTaskId, 'Done');
+            closeCompleteModal();
+            const localTasks = historyManager.getAllTasks();
+            historyRenderer.renderTasks(localTasks);
+            updateTaskCount(localTasks.length);
+            updateQuickStats(localTasks);
+            await showNotification('success', 'Task Completed!', 'The task has been marked as done.', { timer: 3000 });
+
+            btn.disabled = false;
+            btn.textContent = '✅ Mark as Done';
         }
 
         async function handleTaskEdit(taskId) {
