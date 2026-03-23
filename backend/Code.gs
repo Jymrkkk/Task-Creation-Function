@@ -726,15 +726,46 @@ function handleCompleteTask(requestData) {
       const dataRange = sheet.getDataRange();
       const values = dataRange.getValues();
       const searchId = Array.isArray(requestData.messageId) ? requestData.messageId[0] : requestData.messageId;
-      const searchIdStr = String(searchId).trim();
+      const searchIdStr = String(searchId).replace(/^'/, '').trim();
 
+      Logger.log("[handleCompleteTask] Searching for messageId: '" + searchIdStr + "'");
+      Logger.log("[handleCompleteTask] Total rows to search: " + (values.length - 1));
+
+      let rowFound = -1;
+
+      // Primary: search by messageId
       for (let i = 1; i < values.length; i++) {
-        const rowMsgId = String(values[i][7]).replace(/^'/, '').trim();
+        const rawVal = String(values[i][7]);
+        const rowMsgId = rawVal.replace(/^'/, '').trim();
+        Logger.log("[handleCompleteTask] Row " + (i+1) + " msgId raw='" + rawVal + "' cleaned='" + rowMsgId + "'");
         if (rowMsgId === searchIdStr || rowMsgId.includes(searchIdStr) || searchIdStr.includes(rowMsgId)) {
-          sheet.getRange(i + 1, 7).setValue("Done"); // Status column
-          Logger.log("[handleCompleteTask] Updated row " + (i + 1) + " status to Done");
+          rowFound = i + 1;
+          Logger.log("[handleCompleteTask] Found by messageId at row " + rowFound);
           break;
         }
+      }
+
+      // Fallback: search by task name
+      if (rowFound === -1 && requestData.taskName) {
+        Logger.log("[handleCompleteTask] MessageId not found, trying task name fallback: " + requestData.taskName);
+        for (let i = 1; i < values.length; i++) {
+          const rowTaskName = String(values[i][1]).trim();
+          if (rowTaskName === requestData.taskName.trim()) {
+            rowFound = i + 1;
+            Logger.log("[handleCompleteTask] Found by task name at row " + rowFound);
+            break;
+          }
+        }
+      }
+
+      if (rowFound > 0) {
+        const statusCell = sheet.getRange(rowFound, 7);
+        // Clear any data validation that might block the value
+        statusCell.clearDataValidations();
+        statusCell.setValue("Done");
+        Logger.log("[handleCompleteTask] Successfully set row " + rowFound + " status to Done");
+      } else {
+        Logger.log("[handleCompleteTask] WARNING: Could not find row to update. messageId=" + searchIdStr + ", taskName=" + requestData.taskName);
       }
     }
 
