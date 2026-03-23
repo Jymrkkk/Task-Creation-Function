@@ -1121,6 +1121,8 @@
                 };
                 reader.readAsText(file);
             }
+
+            _showFieldError(fieldId, message, isWarning = false) {
                 const field = document.getElementById(fieldId);
                 if (!field) return;
                 const span = document.createElement('span');
