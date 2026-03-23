@@ -529,7 +529,6 @@ body {
     transition: box-shadow 0.22s, transform 0.18s, border-color 0.2s;
     animation: slideUp 0.34s cubic-bezier(.22, .8, .42, 1) both;
     min-width: 0;
-    overflow: hidden;
 }
 
 .task-card::before {
