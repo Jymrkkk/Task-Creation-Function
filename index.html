@@ -1184,23 +1184,22 @@
         const configLoader = new ConfigLoader(configStore, backendClient, dashboardClient);
         const adminDashboard = new AdminDashboard(configStore, configLoader, Validator);
 
+        // Cached channels array — set when dropdown is populated, read when getting selections
+        let _cachedChannels = [];
+
         // Populate the "Assigned To" multi-select from saved channels
         function populateAssignedTo() {
             const dropdown = document.getElementById('assignedToDropdown');
             if (!dropdown) return;
-            const channels = configStore.getChannels();
-            if (!channels.length) {
+            _cachedChannels = configStore.getChannels();
+            if (!_cachedChannels.length) {
                 dropdown.innerHTML = `<div class="ms-empty">No channels configured</div>`;
             } else {
-                // Store name AND url directly on the checkbox — no index/lookup needed
-                dropdown.innerHTML = channels.map(c => {
-                    const safeName = c.name.replace(/"/g, '&quot;');
-                    const safeUrl  = (c.url || '').replace(/"/g, '&quot;');
-                    return `<label class="ms-option">
-                        <input type="checkbox" data-name="${safeName}" data-url="${safeUrl}" onchange="updateAssignedToLabel()">
+                dropdown.innerHTML = _cachedChannels.map((c, i) => `
+                    <label class="ms-option">
+                        <input type="checkbox" value="${i}" data-name="${c.name.replace(/"/g,'&quot;')}" onchange="updateAssignedToLabel()">
                         <span>${c.name}</span>
-                    </label>`;
-                }).join('');
+                    </label>`).join('');
             }
             updateAssignedToLabel();
         }
@@ -1218,13 +1217,13 @@
                 : '— Select channel(s) —';
         }
 
-        // Returns array of {name, url} read directly from checked checkbox data attributes
+        // Returns array of {name, url} using cached channels array — no HTML attribute URL parsing
         function getSelectedChannelObjects() {
             const dropdown = document.getElementById('assignedToDropdown');
             if (!dropdown) return [];
             return [...dropdown.querySelectorAll('input[type=checkbox]:checked')]
-                .map(cb => ({ name: cb.dataset.name, url: cb.dataset.url }))
-                .filter(c => c.name);
+                .map(cb => _cachedChannels[parseInt(cb.value)])
+                .filter(Boolean);
         }
 
         // Returns array of names (for display/storage)
@@ -1343,13 +1342,13 @@
                 }
                 // Validate all selected channels have URLs
                 selectedChannels.forEach(ch => {
-                    if (!ch.url) throw new Error(`No webhook URL set for "${ch.name}". Please update it in Admin Settings.`);
+                    if (!ch.url) throw new Error(`No webhook URL set for "${ch.name}". Please go to Admin Settings (⚙️) and add the webhook URL for this channel.`);
                 });
+                console.log('[sendTestTask] Channels being sent:');
+                selectedChannels.forEach(c => console.log(`  → ${c.name}: ${c.url ? c.url.slice(0, 60) + '...' : 'MISSING URL'}`));
                 // Store as comma-separated for display; send array of webhooks to backend
                 taskData.assignedTo = selectedChannels.map(c => c.name).join(', ');
                 taskData.webhookUrls = selectedChannels;
-                console.log('[sendTestTask] Channels being sent:');
-                selectedChannels.forEach(c => console.log(`  → ${c.name}: ${c.url.slice(0, 60)}...`));
                 
                 // Disable button during submission
                 const saveButton = document.getElementById('mSave');

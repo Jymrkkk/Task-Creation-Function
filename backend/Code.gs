@@ -519,11 +519,24 @@ function doPost(e) {
       return createErrorResponse("Configuration error", "No webhook URL configured for: " + requestData.assignedTo);
     }
 
+    // Filter out entries with no URL and log them
+    const validEntries = webhookEntries.filter(function(e) {
+      if (!e.url) {
+        Logger.log("[doPost] Skipping entry with no URL: " + e.name);
+        return false;
+      }
+      return true;
+    });
+
+    if (validEntries.length === 0) {
+      return createErrorResponse("Configuration error", "No valid webhook URLs found. Please check Admin Settings and ensure all selected channels have webhook URLs configured.");
+    }
+
     const embed = createDiscordEmbed(requestData);
     let allMessageIds = [];
 
-    for (let i = 0; i < webhookEntries.length; i++) {
-      const entry = webhookEntries[i];
+    for (let i = 0; i < validEntries.length; i++) {
+      const entry = validEntries[i];
       try {
         let resp;
         if (requestData.messageId && !Array.isArray(requestData.messageId)) {
