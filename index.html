@@ -466,7 +466,7 @@
                     const result = await response.json();
                     
                     if (!result.success) {
-                        throw new Error(result.error || 'Unknown error occurred');
+                        throw new Error(result.details || result.error || 'Unknown error occurred');
                     }
 
                     return result;
@@ -500,7 +500,7 @@
                     const result = await response.json();
                     
                     if (!result.success) {
-                        throw new Error(result.error || 'Unknown error occurred');
+                        throw new Error(result.details || result.error || 'Unknown error occurred');
                     }
 
                     return result;
@@ -1005,12 +1005,24 @@
 
                 if (hasErrors) return;
 
-                // Filter out completely empty rows, keep partial ones with at least a name
-                const channels = this._rows.filter(r => r.name.trim() !== '');
+                // Always read channel values directly from DOM inputs — never trust _rows alone
+                const container = document.getElementById('webhookList');
+                const rows = container ? container.querySelectorAll('.webhook-row') : [];
+                const channels = [];
+                rows.forEach(row => {
+                    const nameInput = row.querySelector('.webhook-name-input');
+                    const urlInput  = row.querySelector('.webhook-url-input');
+                    const name = nameInput ? nameInput.value.trim() : '';
+                    const url  = urlInput  ? urlInput.value.trim()  : '';
+                    if (name) channels.push({ name, url });
+                });
 
                 const settings = { webAppUrl, spreadsheetId, channels };
                 this.configStore.saveAll(settings);
                 this.configLoader.applyUrl(webAppUrl);
+
+                // Sync _rows with what was saved
+                this._rows = channels.map(c => ({ name: c.name, url: c.url }));
 
                 // Refresh the assignedTo dropdown
                 populateAssignedTo();
@@ -1184,22 +1196,22 @@
         const configLoader = new ConfigLoader(configStore, backendClient, dashboardClient);
         const adminDashboard = new AdminDashboard(configStore, configLoader, Validator);
 
-        // Cached channels array — set when dropdown is populated, read when getting selections
-        let _cachedChannels = [];
-
         // Populate the "Assigned To" multi-select from saved channels
         function populateAssignedTo() {
             const dropdown = document.getElementById('assignedToDropdown');
             if (!dropdown) return;
-            _cachedChannels = configStore.getChannels();
-            if (!_cachedChannels.length) {
+            const channels = configStore.getChannels();
+            if (!channels.length) {
                 dropdown.innerHTML = `<div class="ms-empty">No channels configured</div>`;
             } else {
-                dropdown.innerHTML = _cachedChannels.map((c, i) => `
-                    <label class="ms-option">
-                        <input type="checkbox" value="${i}" data-name="${c.name.replace(/"/g,'&quot;')}" onchange="updateAssignedToLabel()">
+                dropdown.innerHTML = channels.map(c => {
+                    // Encode name for safe HTML attribute; URL stored in JS closure via data-idx
+                    const safeName = c.name.replace(/&/g,'&amp;').replace(/"/g,'&quot;');
+                    return `<label class="ms-option">
+                        <input type="checkbox" data-name="${safeName}" onchange="updateAssignedToLabel()">
                         <span>${c.name}</span>
-                    </label>`).join('');
+                    </label>`;
+                }).join('');
             }
             updateAssignedToLabel();
         }
@@ -1210,25 +1222,31 @@
         }
 
         function updateAssignedToLabel() {
-            const selected = getSelectedChannelObjects();
+            const selected = getSelectedChannels();
             const label = document.getElementById('assignedToLabel');
             label.textContent = selected.length
-                ? selected.map(c => c.name).join(', ')
+                ? selected.join(', ')
                 : '— Select channel(s) —';
         }
 
-        // Returns array of {name, url} using cached channels array — no HTML attribute URL parsing
-        function getSelectedChannelObjects() {
+        // Returns array of names of checked channels
+        function getSelectedChannels() {
             const dropdown = document.getElementById('assignedToDropdown');
             if (!dropdown) return [];
             return [...dropdown.querySelectorAll('input[type=checkbox]:checked')]
-                .map(cb => _cachedChannels[parseInt(cb.value)])
+                .map(cb => cb.dataset.name)
                 .filter(Boolean);
         }
 
-        // Returns array of names (for display/storage)
-        function getSelectedChannels() {
-            return getSelectedChannelObjects().map(c => c.name);
+        // Returns array of {name, url} by looking up names in configStore at call time
+        function getSelectedChannelObjects() {
+            const names = getSelectedChannels();
+            if (!names.length) return [];
+            const channels = configStore.getChannels();
+            return names.map(name => {
+                const ch = channels.find(c => c.name === name);
+                return ch || null;
+            }).filter(Boolean);
         }
 
         function setSelectedChannels(names) {
